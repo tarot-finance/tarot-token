@@ -11,10 +11,10 @@ contract InitializedDistributor is Distributor {
 	}
 
 	constructor (
-		address imx_,
+		address tarot_,
 		address claimable_,
 		bytes[] memory data
-	) public Distributor(imx_, claimable_) {
+	) public Distributor(tarot_, claimable_) {
 		uint _totalShares = 0;
 		for (uint i = 0; i < data.length; i++) {
 			Shareholder memory shareholder = abi.decode(data[i], (Shareholder));

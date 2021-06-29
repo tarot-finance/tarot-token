@@ -1,7 +1,7 @@
 pragma solidity =0.6.6;
 
 import "./libraries/SafeMath.sol";
-import "./interfaces/IImx.sol";
+import "./interfaces/ITarot.sol";
 import "./interfaces/IClaimable.sol";
 import "./interfaces/IVester.sol";
 
@@ -10,7 +10,7 @@ contract Vester is IVester, IClaimable {
 
 	uint public constant override segments = 100;
 
-	address public immutable imx;
+	address public immutable tarot;
 	address public recipient;
 
 	uint public immutable override vestingAmount;
@@ -21,7 +21,7 @@ contract Vester is IVester, IClaimable {
 	uint public immutable finalPoint;
 
 	constructor(
-		address imx_,
+		address tarot_,
 		address recipient_,
 		uint vestingAmount_,
 		uint vestingBegin_,
@@ -29,7 +29,7 @@ contract Vester is IVester, IClaimable {
 	) public {
 		require(vestingEnd_ > vestingBegin_, "Vester: END_TOO_EARLY");
 
-		imx = imx_;
+		tarot = tarot_;
 		recipient = recipient_;
 
 		vestingAmount = vestingAmount_;
@@ -60,11 +60,11 @@ contract Vester is IVester, IClaimable {
 		uint blockTimestamp = getBlockTimestamp();
 		if (blockTimestamp < vestingBegin) return 0;
 		if (blockTimestamp > vestingEnd) {
-			amount = IImx(imx).balanceOf(address(this));
+			amount = ITarot(tarot).balanceOf(address(this));
 		} else {
 			amount = getUnlockedAmount();
 		}
-		if (amount > 0) IImx(imx).transfer(recipient, amount);
+		if (amount > 0) ITarot(tarot).transfer(recipient, amount);
 	}
 	
 	function setRecipient(address recipient_) public virtual {

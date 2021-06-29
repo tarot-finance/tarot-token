@@ -12,7 +12,7 @@ const {
 	encode,
 } = require('./Utils/Ethereum');
 
-const Imx = artifacts.require('Imx');
+const Tarot = artifacts.require('Tarot');
 const MockClaimable = artifacts.require('MockClaimable');
 const Distributor = artifacts.require('DistributorHarness');
 
@@ -24,18 +24,18 @@ contract('Distributor', function (accounts) {
 	let recipientB = accounts[4];
 	let recipientC= accounts[5];
 	
-	let imx;
+	let tarot;
 	let claimable;
 	let distributor;
 	
 	before(async () => {
-		imx = await Imx.new(root);
-		claimable = await MockClaimable.new(imx.address, address(0));
+		tarot = await Tarot.new(root);
+		claimable = await MockClaimable.new(tarot.address, address(0));
 	});
 	
 	describe("updateShareIndex", () => {
 		before(async () => {
-			distributor = await Distributor.new(imx.address, claimable.address);
+			distributor = await Distributor.new(tarot.address, claimable.address);
 			claimable.setRecipient(distributor.address);
 		});
 	
@@ -44,16 +44,16 @@ contract('Distributor', function (accounts) {
 			await distributor.updateShareIndex();
 			expectEqual(shareIndex, 0);
 			expectEqual(shareIndex, await distributor.shareIndex());
-			expectEqual(await imx.balanceOf(distributor.address), 0);
+			expectEqual(await tarot.balanceOf(distributor.address), 0);
 		});
 	
 		it("if the totalShares = 0 nothing happen", async () => {
-			await imx.transfer(claimable.address, "1000");
+			await tarot.transfer(claimable.address, "1000");
 			const shareIndex = await distributor.updateShareIndex.call();
 			await distributor.updateShareIndex();
 			expectEqual(shareIndex, 0);
 			expectEqual(shareIndex, await distributor.shareIndex());
-			expectEqual(await imx.balanceOf(distributor.address), 0);
+			expectEqual(await tarot.balanceOf(distributor.address), 0);
 		});
 		
 		it("first shareIndex calculation", async () => {
@@ -62,26 +62,26 @@ contract('Distributor', function (accounts) {
 			const receipt = await distributor.updateShareIndex();
 			expectEqual(shareIndex / 2**160, 100);
 			expectEqual(shareIndex, await distributor.shareIndex());
-			expectEqual(await imx.balanceOf(distributor.address), 1000);
+			expectEqual(await tarot.balanceOf(distributor.address), 1000);
 			expectEvent(receipt, 'UpdateShareIndex', {
 				shareIndex: await distributor.shareIndex(),
 			});
 		});
 		
 		it("second shareIndex calculation", async () => {
-			await imx.transfer(claimable.address, "1000");
+			await tarot.transfer(claimable.address, "1000");
 			await distributor.setRecipientShares(recipientA, "10");
 			const shareIndex = await distributor.updateShareIndex.call();
 			await distributor.updateShareIndex();
 			expectEqual(shareIndex / 2**160, 200);
 			expectEqual(shareIndex, await distributor.shareIndex());
-			expectEqual(await imx.balanceOf(distributor.address), 2000);
+			expectEqual(await tarot.balanceOf(distributor.address), 2000);
 		});
 	});
 	
 	describe("updateCredit", () => {
 		before(async () => {
-			distributor = await Distributor.new(imx.address, claimable.address);
+			distributor = await Distributor.new(tarot.address, claimable.address);
 			claimable.setRecipient(distributor.address);
 		});
 	
@@ -91,7 +91,7 @@ contract('Distributor', function (accounts) {
 			expectEqual(await distributor.shareIndex(), 0);
 			expectEqual(amount, 0);
 			
-			await imx.transfer(claimable.address, "1000");
+			await tarot.transfer(claimable.address, "1000");
 			amount = await distributor.updateCredit.call(recipientA);
 			await distributor.updateCredit(recipientA);
 			expectEqual(await distributor.shareIndex(), 0);
@@ -119,7 +119,7 @@ contract('Distributor', function (accounts) {
 		
 		it("if there are multiple recipients, tokens will be distributed based on shares", async () => {
 			await distributor.setRecipientShares(recipientB, "15");
-			await imx.transfer(claimable.address, "2000");
+			await tarot.transfer(claimable.address, "2000");
 			let amount = await distributor.updateCredit.call(recipientA);
 			await distributor.updateCredit(recipientA);
 			let r = await distributor.recipients(recipientA);
@@ -128,7 +128,7 @@ contract('Distributor', function (accounts) {
 			expectEqual(amount, r.credit);
 			
 			await distributor.setRecipientShares(recipientC, "25");
-			await imx.transfer(claimable.address, "3000");
+			await tarot.transfer(claimable.address, "3000");
 			amount = await distributor.updateCredit.call(recipientC);
 			await distributor.updateCredit(recipientC);
 			r = await distributor.recipients(recipientC);
@@ -154,12 +154,12 @@ contract('Distributor', function (accounts) {
 		
 	describe("claim", () => {
 		before(async () => {
-			distributor = await Distributor.new(imx.address, claimable.address);
+			distributor = await Distributor.new(tarot.address, claimable.address);
 			claimable.setRecipient(distributor.address);
 		});
 	
 		it("if the totalShares = 0 nothing happen", async () => {
-			await imx.transfer(claimable.address, "1000");
+			await tarot.transfer(claimable.address, "1000");
 			await distributor.claim({from: recipientA});
 			const shareIndex = await distributor.shareIndex();
 			expectEqual(shareIndex, 0);
@@ -173,7 +173,7 @@ contract('Distributor', function (accounts) {
 			expectEqual(shareIndex / 2**160, 100);
 			expectEqual(r.lastShareIndex, shareIndex);
 			expectEqual(r.credit, 0);
-			expectEqual(await imx.balanceOf(recipientA), 1000);
+			expectEqual(await tarot.balanceOf(recipientA), 1000);
 			expectEvent(receipt, 'Claim', {
 				account: recipientA,
 				amount: '1000',
@@ -182,24 +182,24 @@ contract('Distributor', function (accounts) {
 		
 		it("if there are multiple recipients, tokens will be distributed based on shares", async () => {
 			await distributor.setRecipientShares(recipientB, "15");
-			await imx.transfer(claimable.address, "2000");
+			await tarot.transfer(claimable.address, "2000");
 			await distributor.updateCredit(recipientA);
 			let shareIndex = await distributor.shareIndex();
 			let r = await distributor.recipients(recipientA);
 			expectEqual(shareIndex / 2**160, 180);
 			expectEqual(r.lastShareIndex, shareIndex);
 			expectEqual(r.credit, 800);
-			expectEqual(await imx.balanceOf(recipientA), 1000);
+			expectEqual(await tarot.balanceOf(recipientA), 1000);
 			
 			await distributor.setRecipientShares(recipientC, "25");
-			await imx.transfer(claimable.address, "3000");
+			await tarot.transfer(claimable.address, "3000");
 			await distributor.claim({from: recipientC});
 			shareIndex = await distributor.shareIndex();
 			r = await distributor.recipients(recipientC);
 			expectEqual(shareIndex / 2**160, 240);
 			expectEqual(r.lastShareIndex, shareIndex);
 			expectEqual(r.credit, 0);
-			expectEqual(await imx.balanceOf(recipientC), 1500);
+			expectEqual(await tarot.balanceOf(recipientC), 1500);
 			
 			await distributor.claim({from: recipientA});
 			shareIndex = await distributor.shareIndex();
@@ -207,7 +207,7 @@ contract('Distributor', function (accounts) {
 			expectEqual(shareIndex / 2**160, 240);
 			expectEqual(r.lastShareIndex, shareIndex);
 			expectEqual(r.credit, 0);
-			expectEqual(await imx.balanceOf(recipientA), 2400);
+			expectEqual(await tarot.balanceOf(recipientA), 2400);
 			
 			await distributor.claim({from: recipientB});
 			shareIndex = await distributor.shareIndex();
@@ -215,11 +215,11 @@ contract('Distributor', function (accounts) {
 			expectEqual(shareIndex / 2**160, 240);
 			expectEqual(r.lastShareIndex, shareIndex);
 			expectEqual(r.credit, 0);
-			expectEqual(await imx.balanceOf(recipientB), 2100);
+			expectEqual(await tarot.balanceOf(recipientB), 2100);
 		});
 		
 		it("claim returns claimed amount", async () => {
-			await imx.transfer(claimable.address, "3000");
+			await tarot.transfer(claimable.address, "3000");
 			expectEqual(await distributor.claim.call({from: recipientC}), 1500);
 			await distributor.claim({from: recipientC});
 		});
@@ -227,11 +227,11 @@ contract('Distributor', function (accounts) {
 
 	describe("editRecipient", () => {
 		before(async () => {
-			distributor = await Distributor.new(imx.address, claimable.address);
+			distributor = await Distributor.new(tarot.address, claimable.address);
 			claimable.setRecipient(distributor.address);
-			await imx.transfer(address(1), await imx.balanceOf(recipientA), {from:recipientA});
-			await imx.transfer(address(1), await imx.balanceOf(recipientB), {from:recipientB});
-			await imx.transfer(address(1), await imx.balanceOf(recipientC), {from:recipientC});
+			await tarot.transfer(address(1), await tarot.balanceOf(recipientA), {from:recipientA});
+			await tarot.transfer(address(1), await tarot.balanceOf(recipientB), {from:recipientB});
+			await tarot.transfer(address(1), await tarot.balanceOf(recipientC), {from:recipientC});
 		});	
 		
 		it("increasing a user shares increases totalShare", async () => {
@@ -254,7 +254,7 @@ contract('Distributor', function (accounts) {
 		});
 		
 		it("editRecipient updates shareIndex", async () => {
-			await imx.transfer(claimable.address, "1000");
+			await tarot.transfer(claimable.address, "1000");
 			await distributor.editRecipientHarness(recipientB, "5");
 			expectEqual(await distributor.totalShares(), 10);
 			const shareIndex = await distributor.shareIndex();

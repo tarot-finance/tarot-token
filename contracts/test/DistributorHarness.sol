@@ -4,9 +4,9 @@ import "../../contracts/Distributor.sol";
 
 contract DistributorHarness is Distributor {
 	constructor(
-		address imx_,
+		address tarot_,
 		address claimable_
-	) public Distributor(imx_, claimable_) {}
+	) public Distributor(tarot_, claimable_) {}
 	
 	function setRecipientShares(address account, uint shares) public virtual {
 		Recipient storage recipient = recipients[account];

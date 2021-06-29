@@ -5,12 +5,12 @@ import "./Vester.sol";
 contract VesterStepped is Vester {
 
 	constructor(
-		address imx_,
+		address tarot_,
 		address recipient_,
 		uint vestingAmount_,
 		uint vestingBegin_,
 		uint vestingEnd_
-	) public Vester(imx_, recipient_, vestingAmount_, vestingBegin_, vestingEnd_) {}
+	) public Vester(tarot_, recipient_, vestingAmount_, vestingBegin_, vestingEnd_) {}
 	
 	function vestingCurve(uint x) public virtual override pure returns (uint y) {
 		uint speed = 1e18;

@@ -12,7 +12,7 @@ const {
 	encode,
 } = require('./Utils/Ethereum');
 
-const Imx = artifacts.require('Imx');
+const Tarot = artifacts.require('Tarot');
 const Vester = artifacts.require('VesterHarness');
 const VesterSale = artifacts.require('VesterSaleHarness');
 const VesterStepped = artifacts.require('VesterSteppedHarness');
@@ -56,7 +56,7 @@ function logGas(info, receipt) {
 	ADVISORS (2%) + CORE CONTRIBUTORS (6%)
 	Vester -> Distributor (owned by me)
 	
-	IMPERMAX (19%)
+	TAROT (19%)
 	Vester -> Distributor (owned by me)
 	
 	AIRDROP (15%)
@@ -81,8 +81,8 @@ const PERMISSIONLESS_AMOUNT = oneMilion.mul(new BN(13));
 // ADVISORS + CORE CONTRIBUTORS
 const PERMISSIONED_AMOUNT = oneMilion.mul(new BN(2));
 
-// IMPERMAX
-const IMPERMAX_AMOUNT = oneMilion.mul(new BN(19));
+// TAROT
+const TAROT_AMOUNT = oneMilion.mul(new BN(19));
 
 // AIRDROP TODO
 const AIRDROP_AMOUNT = oneMilion.mul(new BN(15));
@@ -106,11 +106,11 @@ contract('Highlevel', function (accounts) {
 	let borrowerA = accounts[12];
 	let borrowerB = accounts[13];
 	let borrowerC = accounts[14];
-	let impermaxAdmin = accounts[15];
+	let tarotAdmin = accounts[15];
 	
 	let uniswapV2Factory;
 	let simpleUniswapOracle;
-	let impermaxFactory;
+	let tarotFactory;
 	let ETH;
 	let UNI;
 	let DAI;
@@ -127,7 +127,7 @@ contract('Highlevel', function (accounts) {
 	let ETHDAIf0;
 	let ETHDAIf1;
 	
-	let imx;
+	let tarot;
 	let clocks;
 	let treasuryVester;
 	let treasuryDistributor;
@@ -137,10 +137,10 @@ contract('Highlevel', function (accounts) {
 	let permissionlessDistributor;
 	let permissionedVester;
 	let permissionedDistributor;
-	let impermaxVester;
+	let tarotVester;
 	
 	let treasury;
-	let impermax;
+	let tarot;
 	let farming;
 	let farmingPool;
 	
@@ -149,30 +149,30 @@ contract('Highlevel', function (accounts) {
 		simpleUniswapOracle = await SimpleUniswapOracle.new();
 		const bDeployer = await BDeployer.new();
 		const cDeployer = await CDeployer.new();
-		impermaxFactory = await Factory.new(admin, address(0), bDeployer.address, cDeployer.address, uniswapV2Factory.address, simpleUniswapOracle.address);
+		tarotFactory = await Factory.new(admin, address(0), bDeployer.address, cDeployer.address, uniswapV2Factory.address, simpleUniswapOracle.address);
 		ETH = await MockERC20.new('Ethereum', 'ETH');
 		UNI = await MockERC20.new('Uniswap', 'UNI');
 		DAI = await MockERC20.new('DAI', 'DAI');
 		// token
-		imx = await Imx.new(root);
-		treasuryVester = await VesterStepped.new(imx.address, root, TREASURY_AMOUNT, VESTING_BEGIN, VESTING_END);
-		privateSaleVester = await VesterSale.new(imx.address, root, PRIVATE_SALE_AMOUNT, VESTING_BEGIN, VESTING_END);
-		permissionlessVester = await Vester.new(imx.address, root, PERMISSIONLESS_AMOUNT, VESTING_BEGIN, VESTING_END);
-		permissionedVester = await Vester.new(imx.address, root, PERMISSIONED_AMOUNT, VESTING_BEGIN, VESTING_END);
-		impermaxVester = await Vester.new(imx.address, impermaxAdmin, IMPERMAX_AMOUNT, VESTING_BEGIN, VESTING_END);
-		clocks = [treasuryVester, privateSaleVester, permissionlessVester, permissionedVester, impermaxVester];
+		tarot = await Tarot.new(root);
+		treasuryVester = await VesterStepped.new(tarot.address, root, TREASURY_AMOUNT, VESTING_BEGIN, VESTING_END);
+		privateSaleVester = await VesterSale.new(tarot.address, root, PRIVATE_SALE_AMOUNT, VESTING_BEGIN, VESTING_END);
+		permissionlessVester = await Vester.new(tarot.address, root, PERMISSIONLESS_AMOUNT, VESTING_BEGIN, VESTING_END);
+		permissionedVester = await Vester.new(tarot.address, root, PERMISSIONED_AMOUNT, VESTING_BEGIN, VESTING_END);
+		tarotVester = await Vester.new(tarot.address, tarotAdmin, TAROT_AMOUNT, VESTING_BEGIN, VESTING_END);
+		clocks = [treasuryVester, privateSaleVester, permissionlessVester, permissionedVester, tarotVester];
 		await setTimestamp(VESTING_BEGIN.sub(new BN(1)), clocks);
 	});
 
 	it("initialize treasury", async () => {
-		await imx.transfer(treasuryVester.address, TREASURY_AMOUNT);
-		treasuryDistributor = await OwnedDistributor.new(imx.address, treasuryVester.address, governance);
+		await tarot.transfer(treasuryVester.address, TREASURY_AMOUNT);
+		treasuryDistributor = await OwnedDistributor.new(tarot.address, treasuryVester.address, governance);
 		await treasuryVester.setRecipient(treasuryDistributor.address, {from:root});
 	});
 
 	it("initialize private sale", async () => {
-		await imx.transfer(privateSaleVester.address, PRIVATE_SALE_AMOUNT);		
-		privateSaleDistributor = await InitializedDistributor.new(imx.address, privateSaleVester.address, [
+		await tarot.transfer(privateSaleVester.address, PRIVATE_SALE_AMOUNT);		
+		privateSaleDistributor = await InitializedDistributor.new(tarot.address, privateSaleVester.address, [
 			encode(['address', 'uint256'], [investorA, '3500']),
 			encode(['address', 'uint256'], [investorB, '2500']),
 			encode(['address', 'uint256'], [investorC, '4000']),
@@ -181,8 +181,8 @@ contract('Highlevel', function (accounts) {
 	});
 
 	it("initialize core contributors", async () => {
-		await imx.transfer(permissionlessVester.address, PERMISSIONLESS_AMOUNT);		
-		permissionlessDistributor = await InitializedDistributor.new(imx.address, permissionlessVester.address, [
+		await tarot.transfer(permissionlessVester.address, PERMISSIONLESS_AMOUNT);		
+		permissionlessDistributor = await InitializedDistributor.new(tarot.address, permissionlessVester.address, [
 			encode(['address', 'uint256'], [bob, '8000']),
 			encode(['address', 'uint256'], [alice, '4000']),
 			encode(['address', 'uint256'], [charlie, '1000']),
@@ -191,8 +191,8 @@ contract('Highlevel', function (accounts) {
 	});
 
 	it("initialize advisors", async () => {
-		await imx.transfer(permissionedVester.address, PERMISSIONED_AMOUNT);
-		permissionedDistributor = await OwnedDistributor.new(imx.address, permissionedVester.address, admin);
+		await tarot.transfer(permissionedVester.address, PERMISSIONED_AMOUNT);
+		permissionedDistributor = await OwnedDistributor.new(tarot.address, permissionedVester.address, admin);
 		const setRecipientRec = await permissionedVester.setRecipient(permissionedDistributor.address, {from:root});
 		const editRecipientRecA = await permissionedDistributor.editRecipient(advisorA, '5000', {from:admin});
 		const editRecipientRecB = await permissionedDistributor.editRecipient(advisorB, '3000', {from:admin});
@@ -202,8 +202,8 @@ contract('Highlevel', function (accounts) {
 		logGas("Permissioned Distributor edit second recipient", editRecipientRecB);
 	});
 
-	it("initialize impermax", async () => {
-		await imx.transfer(impermaxVester.address, IMPERMAX_AMOUNT);
+	it("initialize tarot", async () => {
+		await tarot.transfer(tarotVester.address, TAROT_AMOUNT);
 	});
 
 	it("setup ETHUNI", async () => {
@@ -214,20 +214,20 @@ contract('Highlevel', function (accounts) {
 		await UNI.mint(ETHUNIAddress, oneMantissa.mul(new BN(1000000)));
 		await ETH.mint(ETHUNIAddress, oneMantissa.mul(new BN(1000000)));
 		await ETHUNI.mint(root);
-		const collateralAddress = await impermaxFactory.createCollateral.call(ETHUNIAddress);
-		const borrowable0Address = await impermaxFactory.createBorrowable0.call(ETHUNIAddress);
-		const borrowable1Address = await impermaxFactory.createBorrowable1.call(ETHUNIAddress);
-		await impermaxFactory.createCollateral(ETHUNIAddress);
-		await impermaxFactory.createBorrowable0(ETHUNIAddress);
-		await impermaxFactory.createBorrowable1(ETHUNIAddress);
-		await impermaxFactory.initializeLendingPool(ETHUNIAddress);
+		const collateralAddress = await tarotFactory.createCollateral.call(ETHUNIAddress);
+		const borrowable0Address = await tarotFactory.createBorrowable0.call(ETHUNIAddress);
+		const borrowable1Address = await tarotFactory.createBorrowable1.call(ETHUNIAddress);
+		await tarotFactory.createCollateral(ETHUNIAddress);
+		await tarotFactory.createBorrowable0(ETHUNIAddress);
+		await tarotFactory.createBorrowable1(ETHUNIAddress);
+		await tarotFactory.initializeLendingPool(ETHUNIAddress);
 		ETHUNIc = await Collateral.at(collateralAddress);
 		ETHUNIb0 = await Borrowable.at(borrowable0Address);
 		ETHUNIb1 = await Borrowable.at(borrowable1Address);
 		await increaseTime(1900); // wait for oracle to be ready
 		// Enable liquidity mining
-		ETHUNIfp0 = await FarmingPool.new(imx.address, treasuryDistributor.address, ETHUNIb0.address, treasuryVester.address);
-		ETHUNIfp1 = await FarmingPool.new(imx.address, treasuryDistributor.address, ETHUNIb1.address, treasuryVester.address);
+		ETHUNIfp0 = await FarmingPool.new(tarot.address, treasuryDistributor.address, ETHUNIb0.address, treasuryVester.address);
+		ETHUNIfp1 = await FarmingPool.new(tarot.address, treasuryDistributor.address, ETHUNIb1.address, treasuryVester.address);
 		clocks.push(ETHUNIfp0);
 		clocks.push(ETHUNIfp1);
 		await treasuryDistributor.editRecipient(ETHUNIfp0.address, "350", {from:governance});
@@ -263,29 +263,29 @@ contract('Highlevel', function (accounts) {
 		const privateSaleClaimRec = await privateSaleDistributor.claim({from:investorA});
 		await permissionlessDistributor.claim({from:bob});
 		await permissionedDistributor.claim({from:advisorA});
-		const impermaxVesterClaimRec = await impermaxVester.claim({from:impermaxAdmin});
+		const tarotVesterClaimRec = await tarotVester.claim({from:tarotAdmin});
 		const farmingPoolClaimFirstRec = await ETHUNIfp0.claim({from:borrowerA});
 		const farmingPoolClaimSecondRec = await ETHUNIfp0.claimAccount(borrowerB);
 		const advanceRec = await ETHUNIfp1.advance();
 		const borrowThirdRec = await ETHUNIb0.borrow(borrowerC, borrowerC, oneMantissa.mul(new BN(1)), '0x', {from:borrowerC});
 		await ETHUNIb1.borrow(borrowerB, borrowerB, oneMantissa.mul(new BN(1)), '0x', {from:borrowerB});
 		logGas("Private sale claim", privateSaleClaimRec);
-		logGas("Impermax vester claim", impermaxVesterClaimRec);
+		logGas("Tarot vester claim", tarotVesterClaimRec);
 		logGas("Farming pool first claim and advance", farmingPoolClaimFirstRec);
 		logGas("Farming pool second claim", farmingPoolClaimSecondRec);
 		logGas("Advance", advanceRec);
 		logGas("Borrow third with tracking", borrowThirdRec);
-		expectAlmostEqualMantissa(await imx.balanceOf(investorA), 
+		expectAlmostEqualMantissa(await tarot.balanceOf(investorA), 
 			PRIVATE_SALE_AMOUNT.mul(new BN((0.2 + 0.021055 * 0.3) * 0.35 * 1e9)).div(new BN(1e9)));
-		expectAlmostEqualMantissa(await imx.balanceOf(bob), 
+		expectAlmostEqualMantissa(await tarot.balanceOf(bob), 
 			oneMilion.mul(new BN(8 * 0.026319 * 0.3 * 1e9)).div(new BN(1e9)));
-		expectAlmostEqualMantissa(await imx.balanceOf(advisorA), 
+		expectAlmostEqualMantissa(await tarot.balanceOf(advisorA), 
 			PERMISSIONED_AMOUNT.mul(new BN(0.5 * 0.026319 * 0.3 * 1e9)).div(new BN(1e9)));
-		expectAlmostEqualMantissa(await imx.balanceOf(impermaxAdmin), 
-			IMPERMAX_AMOUNT.mul(new BN(0.026319 * 0.3 * 1e9)).div(new BN(1e9)));
-		expectAlmostEqualMantissa(await imx.balanceOf(borrowerA), 
+		expectAlmostEqualMantissa(await tarot.balanceOf(tarotAdmin), 
+			TAROT_AMOUNT.mul(new BN(0.026319 * 0.3 * 1e9)).div(new BN(1e9)));
+		expectAlmostEqualMantissa(await tarot.balanceOf(borrowerA), 
 			TREASURY_AMOUNT.mul(new BN(0.026319 / 3 * 0.3 * 1e9)).div(new BN(1e9)));
-		expectAlmostEqualMantissa(await imx.balanceOf(borrowerB), 
+		expectAlmostEqualMantissa(await tarot.balanceOf(borrowerB), 
 			TREASURY_AMOUNT.mul(new BN(0.026319 / 2 / 3 * 0.3 * 1e9)).div(new BN(1e9)));
 	});
 
@@ -323,13 +323,13 @@ contract('Highlevel', function (accounts) {
 		await DAI.mint(ETHDAIAddress, oneMantissa.mul(new BN(1000000)));
 		await ETH.mint(ETHDAIAddress, oneMantissa.mul(new BN(1000000)));
 		await ETHDAI.mint(root);
-		const collateralAddress = await impermaxFactory.createCollateral.call(ETHDAIAddress);
-		const borrowable0Address = await impermaxFactory.createBorrowable0.call(ETHDAIAddress);
-		const borrowable1Address = await impermaxFactory.createBorrowable1.call(ETHDAIAddress);
-		await impermaxFactory.createCollateral(ETHDAIAddress);
-		await impermaxFactory.createBorrowable0(ETHDAIAddress);
-		await impermaxFactory.createBorrowable1(ETHDAIAddress);
-		await impermaxFactory.initializeLendingPool(ETHDAIAddress);
+		const collateralAddress = await tarotFactory.createCollateral.call(ETHDAIAddress);
+		const borrowable0Address = await tarotFactory.createBorrowable0.call(ETHDAIAddress);
+		const borrowable1Address = await tarotFactory.createBorrowable1.call(ETHDAIAddress);
+		await tarotFactory.createCollateral(ETHDAIAddress);
+		await tarotFactory.createBorrowable0(ETHDAIAddress);
+		await tarotFactory.createBorrowable1(ETHDAIAddress);
+		await tarotFactory.initializeLendingPool(ETHDAIAddress);
 		ETHDAIc = await Collateral.at(collateralAddress);
 		ETHDAIb0 = await Borrowable.at(borrowable0Address);
 		ETHDAIb1 = await Borrowable.at(borrowable1Address);
@@ -365,8 +365,8 @@ contract('Highlevel', function (accounts) {
 
 	it("add liquidity mining to ETHDAI", async () => {
 		// Enable liquidity mining
-		ETHDAIfp0 = await FarmingPool.new(imx.address, treasuryDistributor.address, ETHDAIb0.address, treasuryVester.address);
-		ETHDAIfp1 = await FarmingPool.new(imx.address, treasuryDistributor.address, ETHDAIb1.address, treasuryVester.address);
+		ETHDAIfp0 = await FarmingPool.new(tarot.address, treasuryDistributor.address, ETHDAIb0.address, treasuryVester.address);
+		ETHDAIfp1 = await FarmingPool.new(tarot.address, treasuryDistributor.address, ETHDAIb1.address, treasuryVester.address);
 		clocks.push(ETHDAIfp0);
 		clocks.push(ETHDAIfp1);
 		await treasuryDistributor.editRecipient(ETHDAIfp0.address, "150", {from:governance});
@@ -437,22 +437,22 @@ contract('Highlevel', function (accounts) {
 		await permissionlessDistributor.claim({from:bob});
 		await permissionedDistributor.claim({from:advisorA});
 		await permissionedDistributor.claim({from:advisorC});
-		await impermaxVester.claim({from:impermaxAdmin});
-		expectAlmostEqualMantissa(await imx.balanceOf(investorA), 
+		await tarotVester.claim({from:tarotAdmin});
+		expectAlmostEqualMantissa(await tarot.balanceOf(investorA), 
 			PRIVATE_SALE_AMOUNT.mul(new BN((0.2 + 0.113487*0.8) * 0.35 * 1e9)).div(new BN(1e9)));
-		expectAlmostEqualMantissa(await imx.balanceOf(bob), 
+		expectAlmostEqualMantissa(await tarot.balanceOf(bob), 
 			oneMilion.mul(new BN(8 * 0.113487 * 1e9)).div(new BN(1e9)));
-		expectAlmostEqualMantissa(await imx.balanceOf(advisorA), 
+		expectAlmostEqualMantissa(await tarot.balanceOf(advisorA), 
 			PERMISSIONED_AMOUNT.mul(new BN(0.5 * 0.113487 * 1e9)).div(new BN(1e9)));
-		expectAlmostEqualMantissa(await imx.balanceOf(advisorC), 
+		expectAlmostEqualMantissa(await tarot.balanceOf(advisorC), 
 			PERMISSIONED_AMOUNT.mul(new BN(0.2 * 0.089311 * 1e9)).div(new BN(1e9)));
-		expectAlmostEqualMantissa(await imx.balanceOf(impermaxAdmin), 
-			IMPERMAX_AMOUNT.mul(new BN(0.113487 * 1e9)).div(new BN(1e9)));
-		expectAlmostEqualMantissa(await imx.balanceOf(borrowerA), 
+		expectAlmostEqualMantissa(await tarot.balanceOf(tarotAdmin), 
+			TAROT_AMOUNT.mul(new BN(0.113487 * 1e9)).div(new BN(1e9)));
+		expectAlmostEqualMantissa(await tarot.balanceOf(borrowerA), 
 			TREASURY_AMOUNT.mul(new BN(0.071605 * 1e9)).div(new BN(1e9)));
-		expectAlmostEqualMantissa(await imx.balanceOf(borrowerB), 
+		expectAlmostEqualMantissa(await tarot.balanceOf(borrowerB), 
 			TREASURY_AMOUNT.mul(new BN(0.031099 * 1e9)).div(new BN(1e9)));
-		expectAlmostEqualMantissa(await imx.balanceOf(borrowerC), 
+		expectAlmostEqualMantissa(await tarot.balanceOf(borrowerC), 
 			TREASURY_AMOUNT.mul(new BN(0.010782 * 1e9)).div(new BN(1e9)));
 	});
 		
@@ -473,7 +473,7 @@ contract('Highlevel', function (accounts) {
 		await permissionedDistributor.claim({from:advisorB});
 		await permissionedDistributor.claim({from:advisorC});
 		await permissionedDistributor.claim({from:admin});
-		await impermaxVester.claim({from:impermaxAdmin});
+		await tarotVester.claim({from:tarotAdmin});
 		const farmingPoolClaimFirstRec = await ETHUNIfp0.claim({from:borrowerA});
 		const farmingPoolClaimSecondRec = await ETHUNIfp0.claim({from:borrowerB});
 		await ETHUNIfp0.claim({from:borrowerC});
@@ -490,29 +490,29 @@ contract('Highlevel', function (accounts) {
 		logGas("Farming pool first claim", farmingPoolClaimFirstRec);
 		logGas("Farming pool second claim", farmingPoolClaimSecondRec);
 		logGas("Distributor first claim", distributorClaimFirstRec);
-		expectAlmostEqualMantissa(await imx.balanceOf(investorA), PRIVATE_SALE_AMOUNT.mul(new BN(7)).div(new BN(20)));
-		expectAlmostEqualMantissa(await imx.balanceOf(investorB), PRIVATE_SALE_AMOUNT.mul(new BN(5)).div(new BN(20)));
-		expectAlmostEqualMantissa(await imx.balanceOf(investorC), PRIVATE_SALE_AMOUNT.mul(new BN(8)).div(new BN(20)));
-		expectAlmostEqualMantissa(await imx.balanceOf(bob), oneMilion.mul(new BN(8)));
-		expectAlmostEqualMantissa(await imx.balanceOf(alice), oneMilion.mul(new BN(4)));
-		expectAlmostEqualMantissa(await imx.balanceOf(charlie), oneMilion.mul(new BN(1)));
-		expectAlmostEqualMantissa(await imx.balanceOf(advisorA), PERMISSIONED_AMOUNT.mul(new BN(5)).div(new BN(10)));
-		expectAlmostEqualMantissa(await imx.balanceOf(advisorB), PERMISSIONED_AMOUNT.mul(new BN(3)).div(new BN(10)));
-		expectAlmostEqualMantissa(await imx.balanceOf(advisorC), PERMISSIONED_AMOUNT.mul(new BN(0.017862 * 1e9)).div(new BN(1e9)));
-		expectAlmostEqualMantissa(await imx.balanceOf(admin), PERMISSIONED_AMOUNT.mul(new BN(0.182138 * 1e9)).div(new BN(1e9)));
-		expectAlmostEqualMantissa(await imx.balanceOf(impermaxAdmin), IMPERMAX_AMOUNT);
-		expectAlmostEqualMantissa(await imx.balanceOf(treasuryVester.address), 0);
-		expectAlmostEqualMantissa(await imx.balanceOf(privateSaleVester.address), 0);
-		expectAlmostEqualMantissa(await imx.balanceOf(permissionlessVester.address), 0);
-		expectAlmostEqualMantissa(await imx.balanceOf(permissionedVester.address), 0);
-		expectAlmostEqualMantissa(await imx.balanceOf(impermaxVester.address), 0);
-		expectAlmostEqualMantissa(await imx.balanceOf(treasuryDistributor.address), 0);
-		expectAlmostEqualMantissa(await imx.balanceOf(privateSaleDistributor.address), 0);
-		expectAlmostEqualMantissa(await imx.balanceOf(permissionlessDistributor.address), 0);
-		expectAlmostEqualMantissa(await imx.balanceOf(permissionedDistributor.address), 0);
-		expectAlmostEqualMantissa(await imx.balanceOf(ETHUNIfp0.address), 0);
-		expectAlmostEqualMantissa(await imx.balanceOf(ETHUNIfp1.address), 0);
-		expectAlmostEqualMantissa(await imx.balanceOf(ETHDAIfp0.address), 0);
-		expectAlmostEqualMantissa(await imx.balanceOf(ETHDAIfp1.address), 0);
+		expectAlmostEqualMantissa(await tarot.balanceOf(investorA), PRIVATE_SALE_AMOUNT.mul(new BN(7)).div(new BN(20)));
+		expectAlmostEqualMantissa(await tarot.balanceOf(investorB), PRIVATE_SALE_AMOUNT.mul(new BN(5)).div(new BN(20)));
+		expectAlmostEqualMantissa(await tarot.balanceOf(investorC), PRIVATE_SALE_AMOUNT.mul(new BN(8)).div(new BN(20)));
+		expectAlmostEqualMantissa(await tarot.balanceOf(bob), oneMilion.mul(new BN(8)));
+		expectAlmostEqualMantissa(await tarot.balanceOf(alice), oneMilion.mul(new BN(4)));
+		expectAlmostEqualMantissa(await tarot.balanceOf(charlie), oneMilion.mul(new BN(1)));
+		expectAlmostEqualMantissa(await tarot.balanceOf(advisorA), PERMISSIONED_AMOUNT.mul(new BN(5)).div(new BN(10)));
+		expectAlmostEqualMantissa(await tarot.balanceOf(advisorB), PERMISSIONED_AMOUNT.mul(new BN(3)).div(new BN(10)));
+		expectAlmostEqualMantissa(await tarot.balanceOf(advisorC), PERMISSIONED_AMOUNT.mul(new BN(0.017862 * 1e9)).div(new BN(1e9)));
+		expectAlmostEqualMantissa(await tarot.balanceOf(admin), PERMISSIONED_AMOUNT.mul(new BN(0.182138 * 1e9)).div(new BN(1e9)));
+		expectAlmostEqualMantissa(await tarot.balanceOf(tarotAdmin), TAROT_AMOUNT);
+		expectAlmostEqualMantissa(await tarot.balanceOf(treasuryVester.address), 0);
+		expectAlmostEqualMantissa(await tarot.balanceOf(privateSaleVester.address), 0);
+		expectAlmostEqualMantissa(await tarot.balanceOf(permissionlessVester.address), 0);
+		expectAlmostEqualMantissa(await tarot.balanceOf(permissionedVester.address), 0);
+		expectAlmostEqualMantissa(await tarot.balanceOf(tarotVester.address), 0);
+		expectAlmostEqualMantissa(await tarot.balanceOf(treasuryDistributor.address), 0);
+		expectAlmostEqualMantissa(await tarot.balanceOf(privateSaleDistributor.address), 0);
+		expectAlmostEqualMantissa(await tarot.balanceOf(permissionlessDistributor.address), 0);
+		expectAlmostEqualMantissa(await tarot.balanceOf(permissionedDistributor.address), 0);
+		expectAlmostEqualMantissa(await tarot.balanceOf(ETHUNIfp0.address), 0);
+		expectAlmostEqualMantissa(await tarot.balanceOf(ETHUNIfp1.address), 0);
+		expectAlmostEqualMantissa(await tarot.balanceOf(ETHDAIfp0.address), 0);
+		expectAlmostEqualMantissa(await tarot.balanceOf(ETHDAIfp1.address), 0);
 	});
 });

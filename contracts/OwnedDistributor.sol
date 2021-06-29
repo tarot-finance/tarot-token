@@ -9,10 +9,10 @@ contract OwnedDistributor is Distributor {
 	event SetAdmin(address newAdmin);
 
 	constructor (
-		address imx_,
+		address tarot_,
 		address claimable_,
 		address admin_
-	) public Distributor(imx_, claimable_) {
+	) public Distributor(tarot_, claimable_) {
 		admin = admin_;
 	}
 

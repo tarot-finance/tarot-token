@@ -5,7 +5,7 @@ const {
 	BN,
 } = require('./Utils/JS');
 
-const Imx = artifacts.require('Imx');
+const Tarot = artifacts.require('Tarot');
 const VesterSale = artifacts.require('VesterSaleHarness');
 
 const oneMantissa = (new BN(10)).pow(new BN(18));
@@ -18,13 +18,13 @@ contract('VesterSale', function (accounts) {
 	let root = accounts[0];
 	let recipient = accounts[1];
 	
-	let imx;
+	let tarot;
 	let vester;
 	
 	before(async () => {
-		imx = await Imx.new(root);
-		vester = await VesterSale.new(imx.address, recipient, VESTING_AMOUNT, VESTING_BEGIN, VESTING_END);
-		imx.transfer(vester.address, VESTING_AMOUNT);
+		tarot = await Tarot.new(root);
+		vester = await VesterSale.new(tarot.address, recipient, VESTING_AMOUNT, VESTING_BEGIN, VESTING_END);
+		tarot.transfer(vester.address, VESTING_AMOUNT);
 	});
 	
 	it('setRecipient', async () => {
@@ -37,7 +37,7 @@ contract('VesterSale', function (accounts) {
 	
 	it('too early', async () => {
 		await expectRevert(
-			VesterSale.new(imx.address, recipient, VESTING_AMOUNT, VESTING_BEGIN, VESTING_BEGIN), 
+			VesterSale.new(tarot.address, recipient, VESTING_AMOUNT, VESTING_BEGIN, VESTING_BEGIN), 
 			'Vester: END_TOO_EARLY'
 		);
 	});
@@ -67,7 +67,7 @@ contract('VesterSale', function (accounts) {
 			const x = blockTimestamp.sub(VESTING_BEGIN).mul(oneMantissa).div(VESTING_PERIOD);
 			const expectedAmount = VESTING_AMOUNT.mul(bnMantissa(expectedPercentage)).div(oneMantissa);
 			await vester.claim({from: recipient});
-			expectAlmostEqualMantissa(await imx.balanceOf(recipient), expectedAmount);
+			expectAlmostEqualMantissa(await tarot.balanceOf(recipient), expectedAmount);
 		});
 	});
 

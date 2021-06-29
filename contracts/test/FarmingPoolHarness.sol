@@ -5,11 +5,11 @@ import "../../contracts/FarmingPool.sol";
 contract FarmingPoolHarness is FarmingPool {
 	
 	constructor(
-		address imx_,
+		address tarot_,
 		address claimable_,
 		address borrowable_,
 		address vester_
-	) public FarmingPool(imx_, claimable_, borrowable_, vester_) {}
+	) public FarmingPool(tarot_, claimable_, borrowable_, vester_) {}
 	
 	
 	uint _blockTimestamp;

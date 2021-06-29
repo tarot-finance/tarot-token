@@ -1,13 +1,13 @@
 pragma solidity =0.6.6;
 
 import "./libraries/SafeMath.sol";
-import "./interfaces/IImx.sol";
+import "./interfaces/ITarot.sol";
 import "./interfaces/IClaimable.sol";
 
 abstract contract Distributor is IClaimable {
 	using SafeMath for uint;
 
-	address public immutable imx;
+	address public immutable tarot;
 	address public immutable claimable;
 
 	struct Recipient {
@@ -26,10 +26,10 @@ abstract contract Distributor is IClaimable {
 	event EditRecipient(address indexed account, uint shares, uint totalShares);
 
 	constructor (
-		address imx_,
+		address tarot_,
 		address claimable_
 	) public {
-		imx = imx_;
+		tarot = tarot_;
 		claimable = claimable_;
 	}
 	
@@ -56,7 +56,7 @@ abstract contract Distributor is IClaimable {
 		amount = updateCredit(account);
 		if (amount > 0) {
 			recipients[account].credit = 0;
-			IImx(imx).transfer(account, amount);
+			ITarot(tarot).transfer(account, amount);
 			emit Claim(account, amount);
 		}
 	}

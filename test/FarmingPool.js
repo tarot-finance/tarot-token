@@ -12,7 +12,7 @@ const {
 	encode,
 } = require('./Utils/Ethereum');
 
-const Imx = artifacts.require('Imx');
+const Tarot = artifacts.require('Tarot');
 const MockClaimable = artifacts.require('MockClaimable');
 const VesterStepped = artifacts.require('VesterSteppedHarness');
 const VesterOneStep = artifacts.require('VesterOneStep');
@@ -56,14 +56,14 @@ contract('FarmingPool', function (accounts) {
 	let admin = accounts[5];
 	let borrowable2 = accounts[6];
 	
-	let imx;
+	let tarot;
 
 	describe("advance onestep", () => {
 		before(async () => {
-			imx = await Imx.new(root);
-			vester = await VesterOneStep.new(imx.address, root, VESTING_AMOUNT, VESTING_BEGIN, VESTING_END);
-			await imx.transfer(vester.address, VESTING_AMOUNT);
-			farmingPool = await FarmingPool.new(imx.address, vester.address, borrowable, vester.address);
+			tarot = await Tarot.new(root);
+			vester = await VesterOneStep.new(tarot.address, root, VESTING_AMOUNT, VESTING_BEGIN, VESTING_END);
+			await tarot.transfer(vester.address, VESTING_AMOUNT);
+			farmingPool = await FarmingPool.new(tarot.address, vester.address, borrowable, vester.address);
 			await vester.setRecipient(farmingPool.address);
 			await setTimestamp(VESTING_BEGIN.sub(new BN(1)));
 			await farmingPool.trackBorrow(borrowerA, oneMantissa, oneMantissa, {from:borrowable});
@@ -110,10 +110,10 @@ contract('FarmingPool', function (accounts) {
 		const epochAmount2 = VESTING_AMOUNT.mul(new BN(24469)).div(new BN(1000000));
 		const epochAmount3 = VESTING_AMOUNT.mul(new BN(47190)).div(new BN(1000000));
 		before(async () => {
-			imx = await Imx.new(root);
-			vester = await VesterStepped.new(imx.address, root, VESTING_AMOUNT, VESTING_BEGIN, VESTING_END);
-			await imx.transfer(vester.address, VESTING_AMOUNT);
-			farmingPool = await FarmingPool.new(imx.address, vester.address, borrowable, vester.address);
+			tarot = await Tarot.new(root);
+			vester = await VesterStepped.new(tarot.address, root, VESTING_AMOUNT, VESTING_BEGIN, VESTING_END);
+			await tarot.transfer(vester.address, VESTING_AMOUNT);
+			farmingPool = await FarmingPool.new(tarot.address, vester.address, borrowable, vester.address);
 			await vester.setRecipient(farmingPool.address);
 			await setTimestamp(VESTING_BEGIN.sub(new BN(1)));
 			await farmingPool.trackBorrow(borrowerA, oneMantissa, oneMantissa, {from:borrowable});
@@ -158,16 +158,16 @@ contract('FarmingPool', function (accounts) {
 			expectAlmostEqualMantissa(await farmingPool.epochAmount(), epochAmount3);
 			expectAlmostEqualMantissa(await farmingPool.shareIndex(), epochAmount1.add(epochAmount2).mul(SHARE_INDEX_MULTIPLIER).div(SHARES_MULTIPLIER));
 			await farmingPool.claim({from:borrowerA});
-			expectAlmostEqualMantissa(await imx.balanceOf(borrowerA), epochAmount1.add(epochAmount2).add(epochAmount3.div(new BN(10))));
+			expectAlmostEqualMantissa(await tarot.balanceOf(borrowerA), epochAmount1.add(epochAmount2).add(epochAmount3.div(new BN(10))));
 		});
 	});
 	
 	describe("trackBorrow", () => {
 		before(async () => {
-			imx = await Imx.new(root);
-			vester = await VesterOneStep.new(imx.address, root, VESTING_AMOUNT, VESTING_BEGIN, VESTING_END);
-			await imx.transfer(vester.address, VESTING_AMOUNT);
-			farmingPool = await FarmingPool.new(imx.address, vester.address, borrowable, vester.address);
+			tarot = await Tarot.new(root);
+			vester = await VesterOneStep.new(tarot.address, root, VESTING_AMOUNT, VESTING_BEGIN, VESTING_END);
+			await tarot.transfer(vester.address, VESTING_AMOUNT);
+			farmingPool = await FarmingPool.new(tarot.address, vester.address, borrowable, vester.address);
 			await vester.setRecipient(farmingPool.address);
 			await setTimestamp(VESTING_BEGIN.sub(new BN(1)));
 		});
@@ -219,12 +219,12 @@ contract('FarmingPool', function (accounts) {
 
 	describe("scenario", () => {
 		before(async () => {
-			imx = await Imx.new(root);
-			vester = await VesterStepped.new(imx.address, root, VESTING_AMOUNT, VESTING_BEGIN, VESTING_END);
-			await imx.transfer(vester.address, VESTING_AMOUNT);
-			distributor = await OwnedDistributor.new(imx.address, vester.address, admin);
-			farmingPool = await FarmingPool.new(imx.address, distributor.address, borrowable, vester.address);
-			farmingPool2 = await FarmingPool.new(imx.address, distributor.address, borrowable2, vester.address);
+			tarot = await Tarot.new(root);
+			vester = await VesterStepped.new(tarot.address, root, VESTING_AMOUNT, VESTING_BEGIN, VESTING_END);
+			await tarot.transfer(vester.address, VESTING_AMOUNT);
+			distributor = await OwnedDistributor.new(tarot.address, vester.address, admin);
+			farmingPool = await FarmingPool.new(tarot.address, distributor.address, borrowable, vester.address);
+			farmingPool2 = await FarmingPool.new(tarot.address, distributor.address, borrowable2, vester.address);
 			await vester.setRecipient(distributor.address);
 			await distributor.editRecipient(farmingPool.address, "100", {from:admin});
 		});
@@ -246,9 +246,9 @@ contract('FarmingPool', function (accounts) {
 			await setTimestamp(VESTING_BEGIN.add(VESTING_PERIOD.mul(new BN(30)).div(new BN(1000))));
 			await farmingPool.claim({from:borrowerA});
 			await farmingPool.claim({from:borrowerC});
-			expectAlmostEqualMantissa(await imx.balanceOf(borrowerA), VESTING_AMOUNT.mul(new BN(39662)).div(new BN(1000000)));
-			expectAlmostEqualMantissa(await imx.balanceOf(borrowerB), VESTING_AMOUNT.mul(new BN(23757)).div(new BN(1000000)));
-			expectAlmostEqualMantissa(await imx.balanceOf(borrowerC), VESTING_AMOUNT.mul(new BN(13657)).div(new BN(1000000)));
+			expectAlmostEqualMantissa(await tarot.balanceOf(borrowerA), VESTING_AMOUNT.mul(new BN(39662)).div(new BN(1000000)));
+			expectAlmostEqualMantissa(await tarot.balanceOf(borrowerB), VESTING_AMOUNT.mul(new BN(23757)).div(new BN(1000000)));
+			expectAlmostEqualMantissa(await tarot.balanceOf(borrowerC), VESTING_AMOUNT.mul(new BN(13657)).div(new BN(1000000)));
 		});
 	
 		it("adding a second farmingPool", async () => {
@@ -262,9 +262,9 @@ contract('FarmingPool', function (accounts) {
 			await farmingPool2.claim({from:borrowerB});
 			await farmingPool.claim({from:borrowerA});
 			await farmingPool.claim({from:borrowerC});
-			expectAlmostEqualMantissa(await imx.balanceOf(borrowerA), VESTING_AMOUNT.mul(new BN(63935)).div(new BN(1000000)));
-			expectAlmostEqualMantissa(await imx.balanceOf(borrowerB), VESTING_AMOUNT.mul(new BN(47352)).div(new BN(1000000)));
-			expectAlmostEqualMantissa(await imx.balanceOf(borrowerC), VESTING_AMOUNT.mul(new BN(25794)).div(new BN(1000000)));
+			expectAlmostEqualMantissa(await tarot.balanceOf(borrowerA), VESTING_AMOUNT.mul(new BN(63935)).div(new BN(1000000)));
+			expectAlmostEqualMantissa(await tarot.balanceOf(borrowerB), VESTING_AMOUNT.mul(new BN(47352)).div(new BN(1000000)));
+			expectAlmostEqualMantissa(await tarot.balanceOf(borrowerC), VESTING_AMOUNT.mul(new BN(25794)).div(new BN(1000000)));
 		});
 	});
 	

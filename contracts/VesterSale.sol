@@ -5,12 +5,12 @@ import "./Vester.sol";
 contract VesterSale is Vester {
 
 	constructor(
-		address imx_,
+		address tarot_,
 		address recipient_,
 		uint vestingAmount_,
 		uint vestingBegin_,
 		uint vestingEnd_
-	) public Vester(imx_, recipient_, vestingAmount_, vestingBegin_, vestingEnd_) {}
+	) public Vester(tarot_, recipient_, vestingAmount_, vestingBegin_, vestingEnd_) {}
 	
 	function getUnlockedAmount() internal virtual override returns (uint amount) {
 		uint blockTimestamp = getBlockTimestamp();

@@ -1,6 +1,6 @@
 pragma solidity =0.6.6;
 
-import "../interfaces/IImx.sol";
+import "../interfaces/ITarot.sol";
 import "../interfaces/IClaimable.sol";
 import "../interfaces/IVester.sol";
 
@@ -8,7 +8,7 @@ contract VesterOneStep is IVester, IClaimable {
 
 	uint public constant override segments = 1;
 
-	address public immutable imx;
+	address public immutable tarot;
 	address public recipient;
 
 	uint public immutable override vestingAmount;
@@ -16,13 +16,13 @@ contract VesterOneStep is IVester, IClaimable {
 	uint public immutable override vestingEnd;
 	
 	constructor(
-		address imx_,
+		address tarot_,
 		address recipient_,
 		uint vestingAmount_,
 		uint vestingBegin_,
 		uint vestingEnd_
 	) public {
-		imx = imx_;
+		tarot = tarot_;
 		recipient = recipient_;
 
 		vestingAmount = vestingAmount_;
@@ -38,8 +38,8 @@ contract VesterOneStep is IVester, IClaimable {
 		require(msg.sender == recipient, "Vester: UNAUTHORIZED");
 		uint blockTimestamp = getBlockTimestamp();
 		if (blockTimestamp < vestingBegin) return 0;
-		amount = IImx(imx).balanceOf(address(this));
-		IImx(imx).transfer(recipient, amount);
+		amount = ITarot(tarot).balanceOf(address(this));
+		ITarot(tarot).transfer(recipient, amount);
 	}
 	
 	uint _blockTimestamp;

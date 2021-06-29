@@ -1,7 +1,7 @@
 pragma solidity >=0.5.0;
 
 interface IFarmingPool {
-	function imx() external pure returns (address);
+	function tarot() external pure returns (address);
 	function claimable() external pure returns (address);
 	function borrowable() external pure returns (address);
 	function vestingBegin() external pure returns (uint);

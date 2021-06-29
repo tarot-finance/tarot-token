@@ -1,18 +1,18 @@
 pragma solidity =0.6.6;
 
-import "../interfaces/IImx.sol";
+import "../interfaces/ITarot.sol";
 import "../interfaces/IClaimable.sol";
 
 contract MockClaimable is IClaimable {
 
-	address public immutable imx;
+	address public immutable tarot;
 	address public recipient;
 	
 	constructor(
-		address imx_,
+		address tarot_,
 		address recipient_
 	) public {
-		imx = imx_;
+		tarot = tarot_;
 		recipient = recipient_;
 	}
 
@@ -21,7 +21,7 @@ contract MockClaimable is IClaimable {
 	}
 
 	function claim() public override returns (uint amount) {
-		amount = IImx(imx).balanceOf(address(this));
-		IImx(imx).transfer(recipient, amount);
+		amount = ITarot(tarot).balanceOf(address(this));
+		ITarot(tarot).transfer(recipient, amount);
 	}
 }

@@ -24,11 +24,11 @@ contract FarmingPool is IBorrowTracker, Distributor {
 	event Advance(uint epochBegin, uint epochAmount);
 	
 	constructor (
-		address imx_,
+		address tarot_,
 		address claimable_,
 		address borrowable_,
 		address vester_
-	) public Distributor(imx_, claimable_) {
+	) public Distributor(tarot_, claimable_) {
 		borrowable = borrowable_;
 		uint _vestingBegin = IVester(vester_).vestingBegin();
 		vestingBegin = _vestingBegin;

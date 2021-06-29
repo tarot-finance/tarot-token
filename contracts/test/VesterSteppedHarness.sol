@@ -5,12 +5,12 @@ import "../../contracts/VesterStepped.sol";
 contract VesterSteppedHarness is VesterStepped {
 	
 	constructor(
-		address imx_,
+		address tarot_,
 		address recipient_,
 		uint vestingAmount_,
 		uint vestingBegin_,
 		uint vestingEnd_
-	) public VesterStepped(imx_, recipient_, vestingAmount_, vestingBegin_, vestingEnd_) {}
+	) public VesterStepped(tarot_, recipient_, vestingAmount_, vestingBegin_, vestingEnd_) {}
 	
 	
 	uint _blockTimestamp;

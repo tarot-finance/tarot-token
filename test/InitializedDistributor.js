@@ -12,7 +12,7 @@ const {
 	encode,
 } = require('./Utils/Ethereum');
 
-const Imx = artifacts.require('Imx');
+const Tarot = artifacts.require('Tarot');
 const MockClaimable = artifacts.require('MockClaimable');
 const InitializedDistributor = artifacts.require('InitializedDistributor');
 
@@ -24,14 +24,14 @@ contract('InitializedDistributor', function (accounts) {
 	let recipientB = accounts[4];
 	let recipientC = accounts[5];
 	
-	let imx;
+	let tarot;
 	let claimable;
 	let distributor;
 	
 	before(async () => {
-		imx = await Imx.new(root);
-		claimable = await MockClaimable.new(imx.address, address(0));
-		distributor = await InitializedDistributor.new(imx.address, claimable.address, [
+		tarot = await Tarot.new(root);
+		claimable = await MockClaimable.new(tarot.address, address(0));
+		distributor = await InitializedDistributor.new(tarot.address, claimable.address, [
 			encode(['address', 'uint256'], [recipientA, '1000']),
 			encode(['address', 'uint256'], [recipientB, '1000']),
 			encode(['address', 'uint256'], [recipientC, '2000']),
@@ -40,18 +40,18 @@ contract('InitializedDistributor', function (accounts) {
 	});
 				
 	it("scenario", async () => {
-		await imx.transfer(claimable.address, "4000");
+		await tarot.transfer(claimable.address, "4000");
 		await distributor.claim({from: recipientA});
 		await distributor.claim({from: recipientB});
 		await distributor.claim({from: recipientC});
 		
 		let shareIndex = await distributor.shareIndex();
 		expectEqual(shareIndex / 2**160, 1);
-		expectEqual(await imx.balanceOf(distributor.address), 0);
+		expectEqual(await tarot.balanceOf(distributor.address), 0);
 		
-		expectEqual(await imx.balanceOf(recipientA), 1000);
-		expectEqual(await imx.balanceOf(recipientB), 1000);
-		expectEqual(await imx.balanceOf(recipientC), 2000);
+		expectEqual(await tarot.balanceOf(recipientA), 1000);
+		expectEqual(await tarot.balanceOf(recipientB), 1000);
+		expectEqual(await tarot.balanceOf(recipientC), 2000);
 	});
 	
 });
