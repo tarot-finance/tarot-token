@@ -148,7 +148,7 @@ contract('Highlevel', function (accounts) {
 		tarotPriceOracle = await TarotPriceOracle.new();
 		const bDeployer = await BDeployer.new();
 		const cDeployer = await CDeployer.new();
-		tarotFactory = await Factory.new(admin, address(0), bDeployer.address, cDeployer.address, uniswapV2Factory.address, tarotPriceOracle.address);
+		tarotFactory = await Factory.new(admin, address(0), bDeployer.address, cDeployer.address, tarotPriceOracle.address);
 		ETH = await MockERC20.new('Ethereum', 'ETH');
 		UNI = await MockERC20.new('Uniswap', 'UNI');
 		DAI = await MockERC20.new('DAI', 'DAI');
