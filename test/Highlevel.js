@@ -23,7 +23,7 @@ const FarmingPool = artifacts.require('FarmingPoolHarness');
 const MockERC20 = artifacts.require('MockERC20');
 const UniswapV2Factory = artifacts.require('UniswapV2Factory');
 const UniswapV2Pair = artifacts.require('UniswapV2Pair');
-const SimpleUniswapOracle = artifacts.require('SimpleUniswapOracle');
+const TarotPriceOracle = artifacts.require('TarotPriceOracle');
 const Factory = artifacts.require('Factory');
 const BDeployer = artifacts.require('BDeployer');
 const CDeployer = artifacts.require('CDeployer');
@@ -109,7 +109,7 @@ contract('Highlevel', function (accounts) {
 	let tarotAdmin = accounts[15];
 	
 	let uniswapV2Factory;
-	let simpleUniswapOracle;
+	let tarotPriceOracle;
 	let tarotFactory;
 	let ETH;
 	let UNI;
@@ -140,16 +140,15 @@ contract('Highlevel', function (accounts) {
 	let tarotVester;
 	
 	let treasury;
-	let tarot;
 	let farming;
 	let farmingPool;
 	
 	before(async () => {
 		uniswapV2Factory = await UniswapV2Factory.new(address(0));
-		simpleUniswapOracle = await SimpleUniswapOracle.new();
+		tarotPriceOracle = await TarotPriceOracle.new();
 		const bDeployer = await BDeployer.new();
 		const cDeployer = await CDeployer.new();
-		tarotFactory = await Factory.new(admin, address(0), bDeployer.address, cDeployer.address, uniswapV2Factory.address, simpleUniswapOracle.address);
+		tarotFactory = await Factory.new(admin, address(0), bDeployer.address, cDeployer.address, uniswapV2Factory.address, tarotPriceOracle.address);
 		ETH = await MockERC20.new('Ethereum', 'ETH');
 		UNI = await MockERC20.new('Uniswap', 'UNI');
 		DAI = await MockERC20.new('DAI', 'DAI');
@@ -224,7 +223,7 @@ contract('Highlevel', function (accounts) {
 		ETHUNIc = await Collateral.at(collateralAddress);
 		ETHUNIb0 = await Borrowable.at(borrowable0Address);
 		ETHUNIb1 = await Borrowable.at(borrowable1Address);
-		await increaseTime(1900); // wait for oracle to be ready
+		await increaseTime(1300); // wait for oracle to be ready
 		// Enable liquidity mining
 		ETHUNIfp0 = await FarmingPool.new(tarot.address, treasuryDistributor.address, ETHUNIb0.address, treasuryVester.address);
 		ETHUNIfp1 = await FarmingPool.new(tarot.address, treasuryDistributor.address, ETHUNIb1.address, treasuryVester.address);
@@ -333,7 +332,7 @@ contract('Highlevel', function (accounts) {
 		ETHDAIc = await Collateral.at(collateralAddress);
 		ETHDAIb0 = await Borrowable.at(borrowable0Address);
 		ETHDAIb1 = await Borrowable.at(borrowable1Address);
-		await increaseTime(1900); // wait for oracle to be ready
+		await increaseTime(1300); // wait for oracle to be ready
 		// Supply liquidity and collateral
 		await DAI.mint(ETHDAIb0.address, oneMantissa.mul(new BN(1000000)));
 		await DAI.mint(ETHDAIb1.address, oneMantissa.mul(new BN(1000000)));
