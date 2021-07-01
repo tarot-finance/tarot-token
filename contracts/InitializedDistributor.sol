@@ -4,24 +4,22 @@ pragma experimental ABIEncoderV2;
 import "./Distributor.sol";
 
 contract InitializedDistributor is Distributor {
-	
-	struct Shareholder {
-		address recipient;
-		uint shares;
-	}
+    struct Shareholder {
+        address recipient;
+        uint shares;
+    }
 
-	constructor (
-		address tarot_,
-		address claimable_,
-		bytes[] memory data
-	) public Distributor(tarot_, claimable_) {
-		uint _totalShares = 0;
-		for (uint i = 0; i < data.length; i++) {
-			Shareholder memory shareholder = abi.decode(data[i], (Shareholder));
-			recipients[shareholder.recipient].shares = shareholder.shares;
-			_totalShares = _totalShares.add(shareholder.shares);
-		}
-		totalShares = _totalShares;
-	}
-
+    constructor(
+        address tarot_,
+        address claimable_,
+        bytes[] memory data
+    ) public Distributor(tarot_, claimable_) {
+        uint _totalShares = 0;
+        for (uint i = 0; i < data.length; i++) {
+            Shareholder memory shareholder = abi.decode(data[i], (Shareholder));
+            recipients[shareholder.recipient].shares = shareholder.shares;
+            _totalShares = _totalShares.add(shareholder.shares);
+        }
+        totalShares = _totalShares;
+    }
 }

@@ -12,15 +12,9 @@ interface IFactory {
     );
     event NewPendingAdmin(address oldPendingAdmin, address newPendingAdmin);
     event NewAdmin(address oldAdmin, address newAdmin);
-    event NewReservesPendingAdmin(
-        address oldReservesPendingAdmin,
-        address newReservesPendingAdmin
-    );
+    event NewReservesPendingAdmin(address oldReservesPendingAdmin, address newReservesPendingAdmin);
     event NewReservesAdmin(address oldReservesAdmin, address newReservesAdmin);
-    event NewReservesManager(
-        address oldReservesManager,
-        address newReservesManager
-    );
+    event NewReservesManager(address oldReservesManager, address newReservesManager);
 
     function admin() external view returns (address);
 
@@ -43,10 +37,7 @@ interface IFactory {
             address borrowable1
         );
 
-    function allLendingPools(uint256)
-        external
-        view
-        returns (address uniswapV2Pair);
+    function allLendingPools(uint256) external view returns (address uniswapV2Pair);
 
     function allLendingPoolsLength() external view returns (uint256);
 
@@ -56,17 +47,11 @@ interface IFactory {
 
     function tarotPriceOracle() external view returns (address);
 
-    function createCollateral(address uniswapV2Pair)
-        external
-        returns (address collateral);
+    function createCollateral(address uniswapV2Pair) external returns (address collateral);
 
-    function createBorrowable0(address uniswapV2Pair)
-        external
-        returns (address borrowable0);
+    function createBorrowable0(address uniswapV2Pair) external returns (address borrowable0);
 
-    function createBorrowable1(address uniswapV2Pair)
-        external
-        returns (address borrowable1);
+    function createBorrowable1(address uniswapV2Pair) external returns (address borrowable1);
 
     function initializeLendingPool(address uniswapV2Pair) external;
 

@@ -4,11 +4,7 @@ import "./BStorage.sol";
 import "./PoolToken.sol";
 
 contract BAllowance is PoolToken, BStorage {
-    event BorrowApproval(
-        address indexed owner,
-        address indexed spender,
-        uint256 value
-    );
+    event BorrowApproval(address indexed owner, address indexed spender, uint256 value);
 
     function _borrowApprove(
         address owner,
@@ -19,10 +15,7 @@ contract BAllowance is PoolToken, BStorage {
         emit BorrowApproval(owner, spender, value);
     }
 
-    function borrowApprove(address spender, uint256 value)
-        external
-        returns (bool)
-    {
+    function borrowApprove(address spender, uint256 value) external returns (bool) {
         _borrowApprove(msg.sender, spender, value);
         return true;
     }
@@ -40,8 +33,7 @@ contract BAllowance is PoolToken, BStorage {
     }
 
     // keccak256("BorrowPermit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
-    bytes32 public constant BORROW_PERMIT_TYPEHASH =
-        0xf6d86ed606f871fa1a557ac0ba607adce07767acf53f492fb215a1a4db4aea6f;
+    bytes32 public constant BORROW_PERMIT_TYPEHASH = 0xf6d86ed606f871fa1a557ac0ba607adce07767acf53f492fb215a1a4db4aea6f;
 
     function borrowPermit(
         address owner,
@@ -52,16 +44,7 @@ contract BAllowance is PoolToken, BStorage {
         bytes32 r,
         bytes32 s
     ) external {
-        _checkSignature(
-            owner,
-            spender,
-            value,
-            deadline,
-            v,
-            r,
-            s,
-            BORROW_PERMIT_TYPEHASH
-        );
+        _checkSignature(owner, spender, value, deadline, v, r, s, BORROW_PERMIT_TYPEHASH);
         _borrowApprove(owner, spender, value);
     }
 }

@@ -13,14 +13,7 @@ import "./interfaces/IFactory.sol";
 import "./interfaces/IBorrowTracker.sol";
 import "./libraries/Math.sol";
 
-contract Borrowable is
-    IBorrowable,
-    PoolToken,
-    BStorage,
-    BSetter,
-    BInterestRateModel,
-    BAllowance
-{
+contract Borrowable is IBorrowable, PoolToken, BStorage, BSetter, BInterestRateModel, BAllowance {
     uint256 public constant BORROW_FEE = 0.001e18; //0.1%
 
     event Borrow(
@@ -53,21 +46,13 @@ contract Borrowable is
         _calculateBorrowRate();
     }
 
-    function _mintReserves(uint256 _exchangeRate, uint256 _totalSupply)
-        internal
-        returns (uint256)
-    {
+    function _mintReserves(uint256 _exchangeRate, uint256 _totalSupply) internal returns (uint256) {
         uint256 _exchangeRateLast = exchangeRateLast;
         if (_exchangeRate > _exchangeRateLast) {
             uint256 _exchangeRateNew = _exchangeRate.sub(
-                _exchangeRate.sub(_exchangeRateLast).mul(reserveFactor).div(
-                    1e18
-                )
+                _exchangeRate.sub(_exchangeRateLast).mul(reserveFactor).div(1e18)
             );
-            uint256 liquidity = _totalSupply
-            .mul(_exchangeRate)
-            .div(_exchangeRateNew)
-            .sub(_totalSupply);
+            uint256 liquidity = _totalSupply.mul(_exchangeRate).div(_exchangeRateNew).sub(_totalSupply);
             if (liquidity == 0) return _exchangeRate;
             address reservesManager = IFactory(factory).reservesManager();
             _mint(reservesManager, liquidity);
@@ -79,8 +64,7 @@ contract Borrowable is
     function exchangeRate() public accrue returns (uint256) {
         uint256 _totalSupply = totalSupply;
         uint256 _actualBalance = totalBalance.add(totalBorrows);
-        if (_totalSupply == 0 || _actualBalance == 0)
-            return initialExchangeRate;
+        if (_totalSupply == 0 || _actualBalance == 0) return initialExchangeRate;
         uint256 _exchangeRate = _actualBalance.mul(1e18).div(_totalSupply);
         return _mintReserves(_exchangeRate, _totalSupply);
     }
@@ -94,10 +78,7 @@ contract Borrowable is
     function borrowBalance(address borrower) public view returns (uint256) {
         BorrowSnapshot memory borrowSnapshot = borrowBalances[borrower];
         if (borrowSnapshot.interestIndex == 0) return 0; // not initialized
-        return
-            uint256(borrowSnapshot.principal).mul(borrowIndex).div(
-                borrowSnapshot.interestIndex
-            );
+        return uint256(borrowSnapshot.principal).mul(borrowIndex).div(borrowSnapshot.interestIndex);
     }
 
     function _trackBorrow(
@@ -107,11 +88,7 @@ contract Borrowable is
     ) internal {
         address _borrowTracker = borrowTracker;
         if (_borrowTracker == address(0)) return;
-        IBorrowTracker(_borrowTracker).trackBorrow(
-            borrower,
-            accountBorrows,
-            _borrowIndex
-        );
+        IBorrowTracker(_borrowTracker).trackBorrow(borrower, accountBorrows, _borrowIndex);
     }
 
     function _updateBorrow(
@@ -127,8 +104,7 @@ contract Borrowable is
         )
     {
         accountBorrowsPrior = borrowBalance(borrower);
-        if (borrowAmount == repayAmount)
-            return (accountBorrowsPrior, accountBorrowsPrior, totalBorrows);
+        if (borrowAmount == repayAmount) return (accountBorrowsPrior, accountBorrowsPrior, totalBorrows);
         uint112 _borrowIndex = borrowIndex;
         if (borrowAmount > repayAmount) {
             BorrowSnapshot storage borrowSnapshot = borrowBalances[borrower];
@@ -141,22 +117,16 @@ contract Borrowable is
         } else {
             BorrowSnapshot storage borrowSnapshot = borrowBalances[borrower];
             uint256 decreaseAmount = repayAmount - borrowAmount;
-            accountBorrows = accountBorrowsPrior > decreaseAmount
-                ? accountBorrowsPrior - decreaseAmount
-                : 0;
+            accountBorrows = accountBorrowsPrior > decreaseAmount ? accountBorrowsPrior - decreaseAmount : 0;
             borrowSnapshot.principal = safe112(accountBorrows);
             if (accountBorrows == 0) {
                 borrowSnapshot.interestIndex = 0;
             } else {
                 borrowSnapshot.interestIndex = _borrowIndex;
             }
-            uint256 actualDecreaseAmount = accountBorrowsPrior.sub(
-                accountBorrows
-            );
+            uint256 actualDecreaseAmount = accountBorrowsPrior.sub(accountBorrows);
             _totalBorrows = totalBorrows; // gas savings
-            _totalBorrows = _totalBorrows > actualDecreaseAmount
-                ? _totalBorrows - actualDecreaseAmount
-                : 0;
+            _totalBorrows = _totalBorrows > actualDecreaseAmount ? _totalBorrows - actualDecreaseAmount : 0;
             totalBorrows = safe112(_totalBorrows);
         }
         _trackBorrow(borrower, accountBorrows, _borrowIndex);
@@ -175,31 +145,21 @@ contract Borrowable is
 
         // optimistically transfer funds
         if (borrowAmount > 0) _safeTransfer(receiver, borrowAmount);
-        if (data.length > 0)
-            ITarotCallee(receiver).tarotBorrow(
-                msg.sender,
-                borrower,
-                borrowAmount,
-                data
-            );
+        if (data.length > 0) ITarotCallee(receiver).tarotBorrow(msg.sender, borrower, borrowAmount, data);
         uint256 balance = IERC20(underlying).balanceOf(address(this));
 
         uint256 borrowFee = borrowAmount.mul(BORROW_FEE).div(1e18);
         uint256 adjustedBorrowAmount = borrowAmount.add(borrowFee);
         uint256 repayAmount = balance.add(borrowAmount).sub(_totalBalance);
-        (
-            uint256 accountBorrowsPrior,
-            uint256 accountBorrows,
-            uint256 _totalBorrows
-        ) = _updateBorrow(borrower, adjustedBorrowAmount, repayAmount);
+        (uint256 accountBorrowsPrior, uint256 accountBorrows, uint256 _totalBorrows) = _updateBorrow(
+            borrower,
+            adjustedBorrowAmount,
+            repayAmount
+        );
 
         if (adjustedBorrowAmount > repayAmount)
             require(
-                ICollateral(collateral).canBorrow(
-                    borrower,
-                    address(this),
-                    accountBorrows
-                ),
+                ICollateral(collateral).canBorrow(borrower, address(this), accountBorrows),
                 "Tarot: INSUFFICIENT_LIQUIDITY"
             );
 
@@ -226,20 +186,13 @@ contract Borrowable is
         uint256 balance = IERC20(underlying).balanceOf(address(this));
         uint256 repayAmount = balance.sub(totalBalance);
 
-        uint256 actualRepayAmount = Math.min(
-            borrowBalance(borrower),
+        uint256 actualRepayAmount = Math.min(borrowBalance(borrower), repayAmount);
+        seizeTokens = ICollateral(collateral).seize(liquidator, borrower, actualRepayAmount);
+        (uint256 accountBorrowsPrior, uint256 accountBorrows, uint256 _totalBorrows) = _updateBorrow(
+            borrower,
+            0,
             repayAmount
         );
-        seizeTokens = ICollateral(collateral).seize(
-            liquidator,
-            borrower,
-            actualRepayAmount
-        );
-        (
-            uint256 accountBorrowsPrior,
-            uint256 accountBorrows,
-            uint256 _totalBorrows
-        ) = _updateBorrow(borrower, 0, repayAmount);
 
         emit Liquidate(
             msg.sender,

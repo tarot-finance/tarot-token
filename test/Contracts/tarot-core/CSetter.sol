@@ -30,28 +30,14 @@ contract CSetter is PoolToken, CStorage {
         tarotPriceOracle = IFactory(factory).tarotPriceOracle();
     }
 
-    function _setSafetyMarginSqrt(uint256 newSafetyMarginSqrt)
-        external
-        nonReentrant
-    {
-        _checkSetting(
-            newSafetyMarginSqrt,
-            SAFETY_MARGIN_SQRT_MIN,
-            SAFETY_MARGIN_SQRT_MAX
-        );
+    function _setSafetyMarginSqrt(uint256 newSafetyMarginSqrt) external nonReentrant {
+        _checkSetting(newSafetyMarginSqrt, SAFETY_MARGIN_SQRT_MIN, SAFETY_MARGIN_SQRT_MAX);
         safetyMarginSqrt = newSafetyMarginSqrt;
         emit NewSafetyMargin(newSafetyMarginSqrt);
     }
 
-    function _setLiquidationIncentive(uint256 newLiquidationIncentive)
-        external
-        nonReentrant
-    {
-        _checkSetting(
-            newLiquidationIncentive,
-            LIQUIDATION_INCENTIVE_MIN,
-            LIQUIDATION_INCENTIVE_MAX
-        );
+    function _setLiquidationIncentive(uint256 newLiquidationIncentive) external nonReentrant {
+        _checkSetting(newLiquidationIncentive, LIQUIDATION_INCENTIVE_MIN, LIQUIDATION_INCENTIVE_MAX);
         liquidationIncentive = newLiquidationIncentive;
         emit NewLiquidationIncentive(newLiquidationIncentive);
     }

@@ -11,10 +11,7 @@ import "./interfaces/ICDeployer.sol";
 contract CDeployer is ICDeployer {
     constructor() public {}
 
-    function deployCollateral(address uniswapV2Pair)
-        external
-        returns (address collateral)
-    {
+    function deployCollateral(address uniswapV2Pair) external returns (address collateral) {
         bytes memory bytecode = type(Collateral).creationCode;
         bytes32 salt = keccak256(abi.encodePacked(msg.sender, uniswapV2Pair));
         assembly {

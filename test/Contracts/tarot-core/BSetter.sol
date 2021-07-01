@@ -36,10 +36,7 @@ contract BSetter is PoolToken, BStorage {
         emit NewReserveFactor(newReserveFactor);
     }
 
-    function _setKinkUtilizationRate(uint256 newKinkUtilizationRate)
-        external
-        nonReentrant
-    {
+    function _setKinkUtilizationRate(uint256 newKinkUtilizationRate) external nonReentrant {
         _checkSetting(newKinkUtilizationRate, KINK_UR_MIN, KINK_UR_MAX);
         kinkUtilizationRate = newKinkUtilizationRate;
         emit NewKinkUtilizationRate(newKinkUtilizationRate);

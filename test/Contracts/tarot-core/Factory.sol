@@ -45,15 +45,9 @@ contract Factory is IFactory {
     );
     event NewPendingAdmin(address oldPendingAdmin, address newPendingAdmin);
     event NewAdmin(address oldAdmin, address newAdmin);
-    event NewReservesPendingAdmin(
-        address oldReservesPendingAdmin,
-        address newReservesPendingAdmin
-    );
+    event NewReservesPendingAdmin(address oldReservesPendingAdmin, address newReservesPendingAdmin);
     event NewReservesAdmin(address oldReservesAdmin, address newReservesAdmin);
-    event NewReservesManager(
-        address oldReservesManager,
-        address newReservesManager
-    );
+    event NewReservesManager(address oldReservesManager, address newReservesManager);
 
     constructor(
         address _admin,
@@ -71,11 +65,7 @@ contract Factory is IFactory {
         emit NewReservesAdmin(address(0), _reservesAdmin);
     }
 
-    function _getTokens(address uniswapV2Pair)
-        private
-        view
-        returns (address token0, address token1)
-    {
+    function _getTokens(address uniswapV2Pair) private view returns (address token0, address token1) {
         token0 = IUniswapV2Pair(uniswapV2Pair).token0();
         token1 = IUniswapV2Pair(uniswapV2Pair).token1();
     }
@@ -92,45 +82,27 @@ contract Factory is IFactory {
         );
     }
 
-    function createCollateral(address uniswapV2Pair)
-        external
-        returns (address collateral)
-    {
+    function createCollateral(address uniswapV2Pair) external returns (address collateral) {
         _getTokens(uniswapV2Pair);
-        require(
-            getLendingPool[uniswapV2Pair].collateral == address(0),
-            "Tarot: ALREADY_EXISTS"
-        );
+        require(getLendingPool[uniswapV2Pair].collateral == address(0), "Tarot: ALREADY_EXISTS");
         collateral = cDeployer.deployCollateral(uniswapV2Pair);
         ICollateral(collateral)._setFactory();
         _createLendingPool(uniswapV2Pair);
         getLendingPool[uniswapV2Pair].collateral = collateral;
     }
 
-    function createBorrowable0(address uniswapV2Pair)
-        external
-        returns (address borrowable0)
-    {
+    function createBorrowable0(address uniswapV2Pair) external returns (address borrowable0) {
         _getTokens(uniswapV2Pair);
-        require(
-            getLendingPool[uniswapV2Pair].borrowable0 == address(0),
-            "Tarot: ALREADY_EXISTS"
-        );
+        require(getLendingPool[uniswapV2Pair].borrowable0 == address(0), "Tarot: ALREADY_EXISTS");
         borrowable0 = bDeployer.deployBorrowable(uniswapV2Pair, 0);
         IBorrowable(borrowable0)._setFactory();
         _createLendingPool(uniswapV2Pair);
         getLendingPool[uniswapV2Pair].borrowable0 = borrowable0;
     }
 
-    function createBorrowable1(address uniswapV2Pair)
-        external
-        returns (address borrowable1)
-    {
+    function createBorrowable1(address uniswapV2Pair) external returns (address borrowable1) {
         _getTokens(uniswapV2Pair);
-        require(
-            getLendingPool[uniswapV2Pair].borrowable1 == address(0),
-            "Tarot: ALREADY_EXISTS"
-        );
+        require(getLendingPool[uniswapV2Pair].borrowable1 == address(0), "Tarot: ALREADY_EXISTS");
         borrowable1 = bDeployer.deployBorrowable(uniswapV2Pair, 1);
         IBorrowable(borrowable1)._setFactory();
         _createLendingPool(uniswapV2Pair);
@@ -142,22 +114,11 @@ contract Factory is IFactory {
         LendingPool memory lPool = getLendingPool[uniswapV2Pair];
         require(!lPool.initialized, "Tarot: ALREADY_INITIALIZED");
 
-        require(
-            lPool.collateral != address(0),
-            "Tarot: COLLATERALIZABLE_NOT_CREATED"
-        );
-        require(
-            lPool.borrowable0 != address(0),
-            "Tarot: BORROWABLE0_NOT_CREATED"
-        );
-        require(
-            lPool.borrowable1 != address(0),
-            "Tarot: BORROWABLE1_NOT_CREATED"
-        );
+        require(lPool.collateral != address(0), "Tarot: COLLATERALIZABLE_NOT_CREATED");
+        require(lPool.borrowable0 != address(0), "Tarot: BORROWABLE0_NOT_CREATED");
+        require(lPool.borrowable1 != address(0), "Tarot: BORROWABLE1_NOT_CREATED");
 
-        (, , , , , bool oracleInitialized) = tarotPriceOracle.getPair(
-            uniswapV2Pair
-        );
+        (, , , , , bool oracleInitialized) = tarotPriceOracle.getPair(uniswapV2Pair);
         if (!oracleInitialized) tarotPriceOracle.initialize(uniswapV2Pair);
 
         ICollateral(lPool.collateral)._initialize(
@@ -167,18 +128,8 @@ contract Factory is IFactory {
             lPool.borrowable0,
             lPool.borrowable1
         );
-        IBorrowable(lPool.borrowable0)._initialize(
-            "Tarot Borrowable",
-            "bTAROT",
-            token0,
-            lPool.collateral
-        );
-        IBorrowable(lPool.borrowable1)._initialize(
-            "Tarot Borrowable",
-            "bTAROT",
-            token1,
-            lPool.collateral
-        );
+        IBorrowable(lPool.borrowable0)._initialize("Tarot Borrowable", "bTAROT", token0, lPool.collateral);
+        IBorrowable(lPool.borrowable1)._initialize("Tarot Borrowable", "bTAROT", token1, lPool.collateral);
 
         getLendingPool[uniswapV2Pair].initialized = true;
         emit LendingPoolInitialized(
@@ -209,16 +160,11 @@ contract Factory is IFactory {
         emit NewPendingAdmin(oldPendingAdmin, address(0));
     }
 
-    function _setReservesPendingAdmin(address newReservesPendingAdmin)
-        external
-    {
+    function _setReservesPendingAdmin(address newReservesPendingAdmin) external {
         require(msg.sender == reservesAdmin, "Tarot: UNAUTHORIZED");
         address oldReservesPendingAdmin = reservesPendingAdmin;
         reservesPendingAdmin = newReservesPendingAdmin;
-        emit NewReservesPendingAdmin(
-            oldReservesPendingAdmin,
-            newReservesPendingAdmin
-        );
+        emit NewReservesPendingAdmin(oldReservesPendingAdmin, newReservesPendingAdmin);
     }
 
     function _acceptReservesAdmin() external {

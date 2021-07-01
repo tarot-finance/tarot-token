@@ -12,18 +12,8 @@ contract PoolToken is IPoolToken, TarotERC20 {
     uint256 public totalBalance;
     uint256 public constant MINIMUM_LIQUIDITY = 1000;
 
-    event Mint(
-        address indexed sender,
-        address indexed minter,
-        uint256 mintAmount,
-        uint256 mintTokens
-    );
-    event Redeem(
-        address indexed sender,
-        address indexed redeemer,
-        uint256 redeemAmount,
-        uint256 redeemTokens
-    );
+    event Mint(address indexed sender, address indexed minter, uint256 mintAmount, uint256 mintTokens);
+    event Redeem(address indexed sender, address indexed redeemer, uint256 redeemAmount, uint256 redeemTokens);
     event Sync(uint256 totalBalance);
 
     /*** Initialize ***/
@@ -49,12 +39,7 @@ contract PoolToken is IPoolToken, TarotERC20 {
     }
 
     // this low-level function should be called from another contract
-    function mint(address minter)
-        external
-        nonReentrant
-        update
-        returns (uint256 mintTokens)
-    {
+    function mint(address minter) external nonReentrant update returns (uint256 mintTokens) {
         uint256 balance = IERC20(underlying).balanceOf(address(this));
         uint256 mintAmount = balance.sub(totalBalance);
         mintTokens = mintAmount.mul(1e18).div(exchangeRate());
@@ -70,12 +55,7 @@ contract PoolToken is IPoolToken, TarotERC20 {
     }
 
     // this low-level function should be called from another contract
-    function redeem(address redeemer)
-        external
-        nonReentrant
-        update
-        returns (uint256 redeemAmount)
-    {
+    function redeem(address redeemer) external nonReentrant update returns (uint256 redeemAmount) {
         uint256 redeemTokens = balanceOf[address(this)];
         redeemAmount = redeemTokens.mul(exchangeRate()).div(1e18);
 
@@ -88,10 +68,7 @@ contract PoolToken is IPoolToken, TarotERC20 {
 
     // force real balance to match totalBalance
     function skim(address to) external nonReentrant {
-        _safeTransfer(
-            to,
-            IERC20(underlying).balanceOf(address(this)).sub(totalBalance)
-        );
+        _safeTransfer(to, IERC20(underlying).balanceOf(address(this)).sub(totalBalance));
     }
 
     // force totalBalance to match real balance
@@ -100,17 +77,11 @@ contract PoolToken is IPoolToken, TarotERC20 {
     /*** Utilities ***/
 
     // same safe transfer function used by UniSwapV2 (with fixed underlying)
-    bytes4 private constant SELECTOR =
-        bytes4(keccak256(bytes("transfer(address,uint256)")));
+    bytes4 private constant SELECTOR = bytes4(keccak256(bytes("transfer(address,uint256)")));
 
     function _safeTransfer(address to, uint256 amount) internal {
-        (bool success, bytes memory data) = underlying.call(
-            abi.encodeWithSelector(SELECTOR, to, amount)
-        );
-        require(
-            success && (data.length == 0 || abi.decode(data, (bool))),
-            "Tarot: TRANSFER_FAILED"
-        );
+        (bool success, bytes memory data) = underlying.call(abi.encodeWithSelector(SELECTOR, to, amount));
+        require(success && (data.length == 0 || abi.decode(data, (bool))), "Tarot: TRANSFER_FAILED");
     }
 
     // prevents a contract from calling itself, directly or indirectly.

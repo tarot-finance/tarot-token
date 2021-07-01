@@ -4,11 +4,7 @@ interface ICollateral {
     /*** Tarot ERC20 ***/
 
     event Transfer(address indexed from, address indexed to, uint256 value);
-    event Approval(
-        address indexed owner,
-        address indexed spender,
-        uint256 value
-    );
+    event Approval(address indexed owner, address indexed spender, uint256 value);
 
     function name() external pure returns (string memory);
 
@@ -20,10 +16,7 @@ interface ICollateral {
 
     function balanceOf(address owner) external view returns (uint256);
 
-    function allowance(address owner, address spender)
-        external
-        view
-        returns (uint256);
+    function allowance(address owner, address spender) external view returns (uint256);
 
     function approve(address spender, uint256 value) external returns (bool);
 
@@ -53,18 +46,8 @@ interface ICollateral {
 
     /*** Pool Token ***/
 
-    event Mint(
-        address indexed sender,
-        address indexed minter,
-        uint256 mintAmount,
-        uint256 mintTokens
-    );
-    event Redeem(
-        address indexed sender,
-        address indexed redeemer,
-        uint256 redeemAmount,
-        uint256 redeemTokens
-    );
+    event Mint(address indexed sender, address indexed minter, uint256 mintAmount, uint256 mintTokens);
+    event Redeem(address indexed sender, address indexed redeemer, uint256 redeemAmount, uint256 redeemTokens);
     event Sync(uint256 totalBalance);
 
     function underlying() external view returns (address);
@@ -101,9 +84,7 @@ interface ICollateral {
 
     function getPrices() external returns (uint256 price0, uint256 price1);
 
-    function tokensUnlocked(address from, uint256 value)
-        external
-        returns (bool);
+    function tokensUnlocked(address from, uint256 value) external returns (bool);
 
     function accountLiquidityAmounts(
         address account,
@@ -111,9 +92,7 @@ interface ICollateral {
         uint256 amount1
     ) external returns (uint256 liquidity, uint256 shortfall);
 
-    function accountLiquidity(address account)
-        external
-        returns (uint256 liquidity, uint256 shortfall);
+    function accountLiquidity(address account) external returns (uint256 liquidity, uint256 shortfall);
 
     function canBorrow(
         address account,
