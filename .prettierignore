@@ -5,3 +5,4 @@ typechain
 node_modules
 cache
 artifacts
+contracts/Tarot.sol
