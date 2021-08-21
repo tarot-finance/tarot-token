@@ -48,6 +48,42 @@ const config: HardhatUserConfig = {
     ],
     overrides: {
       ...compilerOverrides,
+      "test/Contracts/spooky/MasterChef.sol": {
+        version: "0.8.0",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+        },
+      },
+      "test/Contracts/spooky/UniswapV2Factory.sol": {
+        version: "0.6.12",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+        },
+      },
+      "test/Contracts/spooky/UniswapV2Router02.sol": {
+        version: "0.6.12",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+        },
+      },
+      "test/Contracts/spooky/test/UniswapV2Router02Harness.sol": {
+        version: "0.6.12",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+        },
+      },
     },
   },
   defaultNetwork: "hardhat",
