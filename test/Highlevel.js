@@ -7,18 +7,29 @@ const {
   BN,
 } = require("./Utils/JS");
 const { address, increaseTime, encode } = require("./Utils/Ethereum");
+const { web3 } = require("@openzeppelin/test-helpers/src/setup");
+
+const SpookyFactory = artifacts.require(
+  "test/Contracts/spooky/UniswapV2Factory.sol:UniswapV2Factory"
+);
+const SpookyRouter = artifacts.require(
+  "test/Contracts/spooky/UniswapV2Router02.sol:UniswapV2Router02"
+);
 
 const Tarot = artifacts.require("Tarot");
-const Vester = artifacts.require("VesterHarness");
-const VesterSale = artifacts.require("VesterSaleHarness");
-const VesterStepped = artifacts.require("VesterSteppedHarness");
+const Vester = artifacts.require("Vester");
+const VesterSale = artifacts.require("VesterSale");
+const VesterStepped = artifacts.require("VesterStepped");
 const OwnedDistributor = artifacts.require("OwnedDistributor");
 const InitializedDistributor = artifacts.require("InitializedDistributor");
-const FarmingPool = artifacts.require("FarmingPoolHarness");
+const FarmingPool = artifacts.require("FarmingPool");
+const LiquidityGenerator = artifacts.require("LiquidityGenerator");
 
 const MockERC20 = artifacts.require("MockERC20");
-const UniswapV2Factory = artifacts.require("UniswapV2Factory");
-const UniswapV2Pair = artifacts.require("UniswapV2Pair");
+const WETH9 = artifacts.require("WETH9");
+const UniswapV2Pair = artifacts.require(
+  "test/Contracts/spooky/UniswapV2Factory.sol:UniswapV2Pair"
+);
 const TarotPriceOracle = artifacts.require("TarotPriceOracle");
 const Factory = artifacts.require("Factory");
 const BDeployer = artifacts.require("BDeployer");
@@ -39,49 +50,31 @@ function logGas(info, receipt) {
   console.log(info, receipt.receipt.gasUsed);
 }
 
-/*  
-	TREASURY (40%)
-	VesterStepped -> Distributor (owned by governance) -> Farming Pools
-	
-	PRIVATE SALE (10%)
-	VesterSale -> Distributor (mi servirebbe speciale)
-	
-	CORE CONTRIBUTORS (6%) + charlieS (1%)
-	Vester -> Distributor
-	
-	ADVISORS (2%) + CORE CONTRIBUTORS (6%)
-	Vester -> Distributor (owned by me)
-	
-	TAROT (19%)
-	Vester -> Distributor (owned by me)
-	
-	AIRDROP (15%)
-	Contract TODO
-	
-	LIQUIDITY (1%)	
-*/
-
-const VESTING_BEGIN = new BN(1600000000);
+const VESTING_BEGIN = new BN(1700000000);
 const VESTING_PERIOD = new BN(100 * 14 * 24 * 3600);
 const VESTING_END = VESTING_BEGIN.add(VESTING_PERIOD);
 
-// TREASURY
+const LIQUIDITY_GENERATION_END = VESTING_BEGIN.sub(new BN(7 * 24 * 3600));
+const LIQUIDITY_GENERATION_PERIOD = new BN(7 * 24 * 3600);
+const LIQUIDITY_BONUS_PERIOD = new BN(1 * 24 * 3600);
+const LIQUIDITY_GENERATION_BEGIN = LIQUIDITY_GENERATION_END.sub(
+  LIQUIDITY_GENERATION_PERIOD
+);
+
 const TREASURY_AMOUNT = oneMilion.mul(new BN(40));
 
-// PRIVATE SALE
 const PRIVATE_SALE_AMOUNT = oneMilion.mul(new BN(10));
 
-// CORE CONTRIBUTORS + charlieS
 const PERMISSIONLESS_AMOUNT = oneMilion.mul(new BN(13));
 
-// ADVISORS + CORE CONTRIBUTORS
 const PERMISSIONED_AMOUNT = oneMilion.mul(new BN(2));
 
-// TAROT
 const TAROT_AMOUNT = oneMilion.mul(new BN(19));
 
-// AIRDROP TODO
-const AIRDROP_AMOUNT = oneMilion.mul(new BN(15));
+const AIRDROP_AMOUNT = oneMilion.mul(new BN(10));
+
+const LIQUIDITY_GENERATION_PARTICIPANTS_AMOUNT = oneMilion.mul(new BN(4));
+const LIQUIDITY_GENERATION_BONUS_AMOUNT = oneMilion.mul(new BN(1));
 
 // LIQUIDITY
 const LIQUIDITY_AMOUNT = oneMilion.mul(new BN(1));
@@ -103,8 +96,13 @@ contract("Highlevel", function (accounts) {
   let borrowerB = accounts[13];
   let borrowerC = accounts[14];
   let tarotAdmin = accounts[15];
+  let liqA = accounts[16];
+  let liqB = accounts[17];
+  let liqC = accounts[18];
 
   let uniswapV2Factory;
+  let router;
+  let weth;
   let tarotPriceOracle;
   let tarotFactory;
   let ETH;
@@ -134,13 +132,28 @@ contract("Highlevel", function (accounts) {
   let permissionedVester;
   let permissionedDistributor;
   let tarotVester;
+  let liquidityGenerationParticipantsVester;
+  let liquidityGenerationParticipantsDistributor;
+  let liquidityGenerationBonusVester;
+  let liquidityGenerationBonusDistributor;
+  let liquidityGenerator;
 
   let treasury;
   let farming;
   let farmingPool;
 
+  let pairAddress0;
+  let pairAddress1;
+
+  let pair0;
+  let pair1;
+
   before(async () => {
-    uniswapV2Factory = await UniswapV2Factory.new(address(0));
+    uniswapV2Factory = await SpookyFactory.new(address(0));
+    uniswapV2Factory1 = await SpookyFactory.new(address(0));
+    weth = await WETH9.new();
+    router = await SpookyRouter.new(uniswapV2Factory.address, weth.address);
+    router1 = await SpookyRouter.new(uniswapV2Factory1.address, weth.address);
     tarotPriceOracle = await TarotPriceOracle.new();
     const bDeployer = await BDeployer.new();
     const cDeployer = await CDeployer.new();
@@ -154,8 +167,26 @@ contract("Highlevel", function (accounts) {
     ETH = await MockERC20.new("Ethereum", "ETH");
     UNI = await MockERC20.new("Uniswap", "UNI");
     DAI = await MockERC20.new("DAI", "DAI");
+
     // token
     tarot = await Tarot.new(root);
+
+    // Create pair0
+    pairAddress0 = await uniswapV2Factory.createPair.call(
+      weth.address,
+      tarot.address
+    );
+    await uniswapV2Factory.createPair(weth.address, tarot.address);
+    pair0 = await UniswapV2Pair.at(pairAddress0);
+
+    // Create pair1
+    pairAddress1 = await uniswapV2Factory1.createPair.call(
+      weth.address,
+      tarot.address
+    );
+    await uniswapV2Factory1.createPair(weth.address, tarot.address);
+    pair1 = await UniswapV2Pair.at(pairAddress1);
+
     treasuryVester = await VesterStepped.new(
       tarot.address,
       root,
@@ -191,14 +222,235 @@ contract("Highlevel", function (accounts) {
       VESTING_BEGIN,
       VESTING_END
     );
+    liquidityGenerationParticipantsVester = await VesterSale.new(
+      tarot.address,
+      root,
+      LIQUIDITY_GENERATION_PARTICIPANTS_AMOUNT,
+      VESTING_BEGIN,
+      VESTING_END
+    );
+    await tarot.transfer(
+      liquidityGenerationParticipantsVester.address,
+      LIQUIDITY_GENERATION_PARTICIPANTS_AMOUNT
+    );
+    liquidityGenerationParticipantsDistributor = await OwnedDistributor.new(
+      tarot.address,
+      liquidityGenerationParticipantsVester.address,
+      governance
+    );
+    await liquidityGenerationParticipantsVester.setRecipient(
+      liquidityGenerationParticipantsDistributor.address,
+      {
+        from: root,
+      }
+    );
+    liquidityGenerationBonusVester = await VesterSale.new(
+      tarot.address,
+      root,
+      LIQUIDITY_GENERATION_BONUS_AMOUNT,
+      VESTING_BEGIN,
+      VESTING_END
+    );
+    await tarot.transfer(
+      liquidityGenerationBonusVester.address,
+      LIQUIDITY_GENERATION_BONUS_AMOUNT
+    );
+    liquidityGenerationBonusDistributor = await OwnedDistributor.new(
+      tarot.address,
+      liquidityGenerationBonusVester.address,
+      governance
+    );
+    await liquidityGenerationBonusVester.setRecipient(
+      liquidityGenerationBonusDistributor.address,
+      {
+        from: root,
+      }
+    );
+    liquidityGenerator = await LiquidityGenerator.new(
+      governance,
+      tarot.address,
+      router.address,
+      router1.address,
+      pair0.address,
+      pair1.address,
+      governance,
+      liquidityGenerationParticipantsDistributor.address,
+      liquidityGenerationBonusDistributor.address,
+      LIQUIDITY_GENERATION_BEGIN,
+      LIQUIDITY_GENERATION_PERIOD,
+      LIQUIDITY_BONUS_PERIOD,
+      "65",
+      "35"
+    );
+    await tarot.transfer(liquidityGenerator.address, LIQUIDITY_AMOUNT);
+    await liquidityGenerationParticipantsDistributor.setAdmin(
+      liquidityGenerator.address,
+      {
+        from: governance,
+      }
+    );
+    await liquidityGenerationBonusDistributor.setAdmin(
+      liquidityGenerator.address,
+      {
+        from: governance,
+      }
+    );
     clocks = [
       treasuryVester,
       privateSaleVester,
       permissionlessVester,
       permissionedVester,
       tarotVester,
+      liquidityGenerationParticipantsVester,
+      liquidityGenerator,
     ];
-    await setTimestamp(VESTING_BEGIN.sub(new BN(1)), clocks);
+
+    await expectRevert(
+      liquidityGenerator.deposit({
+        value: new BN(10).pow(new BN(18)).mul(new BN(50)),
+        from: liqA,
+      }),
+      "LiquidityGenerator: TOO_SOON"
+    );
+
+    await ethers.provider.send("evm_setNextBlockTimestamp", [
+      LIQUIDITY_GENERATION_BEGIN.add(new BN(0)).toNumber(),
+    ]);
+    console.log("0) liqA balance: ", await web3.eth.getBalance(liqA));
+    console.log(
+      "0) LiquidityGenerator balance: ",
+      await web3.eth.getBalance(liquidityGenerator.address)
+    );
+
+    await expectRevert(
+      liquidityGenerator.deposit({
+        value: 0,
+        from: liqA,
+      }),
+      "LiquidityGenerator: INVALID_VALUE"
+    );
+
+    await expectRevert(
+      liquidityGenerator.deposit({
+        value: new BN(10).pow(new BN(18)).mul(new BN(9)),
+        from: liqA,
+      }),
+      "LiquidityGenerator: INVALID_VALUE"
+    );
+
+    const depositRec0 = await liquidityGenerator.deposit({
+      value: new BN(10).pow(new BN(18)).mul(new BN(51)),
+      from: liqA,
+    });
+    const depositRec1 = await liquidityGenerator.deposit({
+      value: new BN(10).pow(new BN(18)).mul(new BN(50)),
+      from: liqA,
+    });
+    await ethers.provider.send("evm_setNextBlockTimestamp", [
+      LIQUIDITY_GENERATION_BEGIN.add(new BN(60 * 60 * 24)).toNumber(),
+    ]);
+
+    //await ethers.provider.send("evm_mine");
+    const depositRec2 = await liquidityGenerator.deposit({
+      value: new BN(10).pow(new BN(18)).mul(new BN(50)),
+      from: liqB,
+    });
+    const depositRec3 = await liquidityGenerator.deposit({
+      value: new BN(10).pow(new BN(18)).mul(new BN(50)),
+      from: liqB,
+    });
+    const depositRec4 = await liquidityGenerator.deposit({
+      value: new BN(10).pow(new BN(18)).mul(new BN(53)),
+      from: liqA,
+    });
+    const depositRec5 = await liquidityGenerator.deposit({
+      value: new BN(10).pow(new BN(18)).mul(new BN(50)),
+      from: liqA,
+    });
+    console.log("1) liqA balance: ", await web3.eth.getBalance(liqA));
+    console.log(
+      "1) LiquidityGenerator balance: ",
+      await web3.eth.getBalance(liquidityGenerator.address)
+    );
+    const sharesA = (
+      await liquidityGenerator.distributorRecipients(liqA)
+    ).shares.toString();
+    const sharesB = (
+      await liquidityGenerator.distributorRecipients(liqB)
+    ).shares.toString();
+    const sharesC = (
+      await liquidityGenerator.distributorRecipients(liqC)
+    ).shares.toString();
+    console.log("Shares", { sharesA, sharesB, sharesC });
+    const sharesBonusA = (
+      await liquidityGenerator.bonusDistributorRecipients(liqA)
+    ).shares.toString();
+    const sharesBonusB = (
+      await liquidityGenerator.bonusDistributorRecipients(liqB)
+    ).shares.toString();
+    const sharesBonusC = (
+      await liquidityGenerator.bonusDistributorRecipients(liqC)
+    ).shares.toString();
+    console.log("SharesBonus", { sharesBonusA, sharesBonusB, sharesBonusC });
+    const distributorTotalShares = (
+      await liquidityGenerator.distributorTotalShares()
+    ).toString();
+    const bonusDistributorTotalShares = (
+      await liquidityGenerator.bonusDistributorTotalShares()
+    ).toString();
+    console.log("TotalShares", {
+      distributorTotalShares,
+      bonusDistributorTotalShares,
+    });
+
+    await expectRevert(
+      liquidityGenerator.finalize({
+        from: liqA,
+      }),
+      "LiquidityGenerator: UNAUTHORIZED"
+    );
+
+    await expectRevert(
+      liquidityGenerator.deliverLiquidityToReservesManager({
+        from: governance,
+      }),
+      "LiquidityGenerator: NOT_FINALIZED"
+    );
+
+    await expectRevert(
+      liquidityGenerator.finalize({
+        from: governance,
+      }),
+      "LiquidityGenerator: TOO_SOON"
+    );
+
+    await ethers.provider.send("evm_setNextBlockTimestamp", [
+      LIQUIDITY_GENERATION_END.add(new BN(0)).toNumber(),
+    ]);
+
+    await expectRevert(
+      liquidityGenerator.deposit({
+        value: new BN(10).pow(new BN(18)).mul(new BN(50)),
+        from: liqA,
+      }),
+      "LiquidityGenerator: TOO_LATE"
+    );
+
+    //    await ethers.provider.send("evm_mine");
+    await liquidityGenerator.finalize({
+      from: governance,
+    });
+
+    await expectRevert(
+      liquidityGenerator.finalize({
+        from: governance,
+      }),
+      "LiquidityGenerator: FINALIZED"
+    );
+    await ethers.provider.send("evm_setNextBlockTimestamp", [
+      VESTING_BEGIN.sub(new BN(10000)).toNumber(),
+    ]);
+    await ethers.provider.send("evm_mine");
   });
 
   it("initialize treasury", async () => {
@@ -375,10 +627,14 @@ contract("Highlevel", function (accounts) {
   });
 
   it("30% 1st epoch", async () => {
-    await setTimestamp(
-      VESTING_BEGIN.add(new BN((14 * 24 * 3600 * 3) / 10)),
-      clocks
-    );
+    await ethers.provider.send("evm_setNextBlockTimestamp", [
+      VESTING_BEGIN.add(new BN((14 * 24 * 3600 * 3) / 10)).toNumber(),
+    ]);
+    await ethers.provider.send("evm_mine");
+    //await setTimestamp(
+    // VESTING_BEGIN.add(new BN((14 * 24 * 3600 * 3) / 10)),
+    // clocks
+    //);
     const privateSaleClaimRec = await privateSaleDistributor.claim({
       from: investorA,
     });
@@ -441,10 +697,14 @@ contract("Highlevel", function (accounts) {
   });
 
   it("60% 1st epoch", async () => {
-    await setTimestamp(
-      VESTING_BEGIN.add(new BN((14 * 24 * 3600 * 6) / 10)),
-      clocks
-    );
+    await ethers.provider.send("evm_setNextBlockTimestamp", [
+      VESTING_BEGIN.add(new BN((14 * 24 * 3600 * 6) / 10)).toNumber(),
+    ]);
+    await ethers.provider.send("evm_mine");
+    // await setTimestamp(
+    //  VESTING_BEGIN.add(new BN((14 * 24 * 3600 * 6) / 10)),
+    //  clocks
+    //);
     // Repay
     await UNI.mint(ETHUNIb0.address, oneMantissa.mul(new BN(1000000)));
     await ETH.mint(ETHUNIb0.address, oneMantissa.mul(new BN(1000000)));
@@ -452,10 +712,14 @@ contract("Highlevel", function (accounts) {
   });
 
   it("20% 2nd epoch", async () => {
-    await setTimestamp(
-      VESTING_BEGIN.add(new BN((14 * 24 * 3600 * 12) / 10)),
-      clocks
-    );
+    await ethers.provider.send("evm_setNextBlockTimestamp", [
+      VESTING_BEGIN.add(new BN((14 * 24 * 3600 * 12) / 10)).toNumber(),
+    ]);
+    await ethers.provider.send("evm_mine");
+    // await setTimestamp(
+    //   VESTING_BEGIN.add(new BN((14 * 24 * 3600 * 12) / 10)),
+    //   clocks
+    // );
     await ETHUNIfp0.advance();
     await ETHUNIfp1.advance();
     await ETHUNIb1.borrow(
@@ -582,10 +846,14 @@ contract("Highlevel", function (accounts) {
   });
 
   it("50% 3rd epoch", async () => {
-    await setTimestamp(
-      VESTING_BEGIN.add(new BN((14 * 24 * 3600 * 25) / 10)),
-      clocks
-    );
+    await ethers.provider.send("evm_setNextBlockTimestamp", [
+      VESTING_BEGIN.add(new BN((14 * 24 * 3600 * 25) / 10)).toNumber(),
+    ]);
+    await ethers.provider.send("evm_mine");
+    //await setTimestamp(
+    //  VESTING_BEGIN.add(new BN((14 * 24 * 3600 * 25) / 10)),
+    //  clocks
+    //);
     await ETHUNIfp0.advance();
     await ETHUNIfp1.advance();
   });
@@ -622,10 +890,14 @@ contract("Highlevel", function (accounts) {
   });
 
   it("50% 4th epoch", async () => {
-    await setTimestamp(
-      VESTING_BEGIN.add(new BN((14 * 24 * 3600 * 35) / 10)),
-      clocks
-    );
+    await ethers.provider.send("evm_setNextBlockTimestamp", [
+      VESTING_BEGIN.add(new BN((14 * 24 * 3600 * 35) / 10)).toNumber(),
+    ]);
+    await ethers.provider.send("evm_mine");
+    //await setTimestamp(
+    //  VESTING_BEGIN.add(new BN((14 * 24 * 3600 * 35) / 10)),
+    //  clocks
+    //);
     await ETHUNIfp0.advance();
     await ETHUNIfp1.advance();
     await ETHDAIfp0.advance();
@@ -737,10 +1009,14 @@ contract("Highlevel", function (accounts) {
   });
 
   it("50% 5th epoch", async () => {
-    await setTimestamp(
-      VESTING_BEGIN.add(new BN((14 * 24 * 3600 * 45) / 10)),
-      clocks
-    );
+    await ethers.provider.send("evm_setNextBlockTimestamp", [
+      VESTING_BEGIN.add(new BN((14 * 24 * 3600 * 45) / 10)).toNumber(),
+    ]);
+    await ethers.provider.send("evm_mine");
+    //await setTimestamp(
+    //  VESTING_BEGIN.add(new BN((14 * 24 * 3600 * 45) / 10)),
+    //  clocks
+    //);
     await ETHUNIfp0.advance();
     await ETHUNIfp1.advance();
     await ETHDAIfp0.advance();
@@ -798,16 +1074,176 @@ contract("Highlevel", function (accounts) {
     );
   });
 
+  it("unlock and deliver liquidity to reserves manager", async () => {
+    console.log(
+      "LiquidityGenerator pair0 balance: ",
+      (await pair0.balanceOf(liquidityGenerator.address)).toString()
+    );
+    console.log(
+      "LiquidityGenerator pair1 balance: ",
+      (await pair1.balanceOf(liquidityGenerator.address)).toString()
+    );
+    console.log(
+      "reservesManager pair0 balance: ",
+      (
+        await pair0.balanceOf(await liquidityGenerator.reservesManager())
+      ).toString()
+    );
+    console.log(
+      "reservesManager pair1 balance: ",
+      (
+        await pair1.balanceOf(await liquidityGenerator.reservesManager())
+      ).toString()
+    );
+
+    await expectRevert(
+      liquidityGenerator.deliverLiquidityToReservesManager({
+        from: liqA,
+      }),
+      "LiquidityGenerator: UNAUTHORIZED"
+    );
+
+    await expectRevert(
+      liquidityGenerator.deliverLiquidityToReservesManager({
+        from: governance,
+      }),
+      "LiquidityGenerator: STILL_LOCKED"
+    );
+
+    console.log(
+      "Unlock timestamp: ",
+      (await liquidityGenerator.unlockTimestamp()).toString()
+    );
+
+    await expectRevert(
+      liquidityGenerator.postponeUnlockTimestamp(
+        (
+          await liquidityGenerator.unlockTimestamp()
+        ).add(new BN(60 * 60 * 24 * 30)),
+        {
+          from: liqA,
+        }
+      ),
+      "LiquidityGenerator: UNAUTHORIZED"
+    );
+
+    await expectRevert(
+      liquidityGenerator.postponeUnlockTimestamp(
+        await liquidityGenerator.unlockTimestamp(),
+        {
+          from: governance,
+        }
+      ),
+      "LiquidityGenerator: INVALID_UNLOCK_TIMESTAMP"
+    );
+
+    await liquidityGenerator.postponeUnlockTimestamp(
+      (
+        await liquidityGenerator.unlockTimestamp()
+      ).add(new BN(60 * 60 * 24 * 30)),
+      {
+        from: governance,
+      }
+    );
+    console.log(
+      "Postponed unlock timestamp: ",
+      (await liquidityGenerator.unlockTimestamp()).toString()
+    );
+
+    await ethers.provider.send("evm_setNextBlockTimestamp", [
+      (await liquidityGenerator.unlockTimestamp()).toNumber(),
+    ]);
+
+    console.log("Delivered: ", await liquidityGenerator.delivered());
+
+    await liquidityGenerator.deliverLiquidityToReservesManager({
+      from: governance,
+    });
+
+    console.log("Delivered: ", await liquidityGenerator.delivered());
+
+    console.log(
+      "LiquidityGenerator pair0 balance: ",
+      (await pair0.balanceOf(liquidityGenerator.address)).toString()
+    );
+    console.log(
+      "LiquidityGenerator pair1 balance: ",
+      (await pair1.balanceOf(liquidityGenerator.address)).toString()
+    );
+    console.log(
+      "reservesManager pair0 balance: ",
+      (
+        await pair0.balanceOf(await liquidityGenerator.reservesManager())
+      ).toString()
+    );
+    console.log(
+      "reservesManager pair1 balance: ",
+      (
+        await pair1.balanceOf(await liquidityGenerator.reservesManager())
+      ).toString()
+    );
+  });
+
   it("after vestingEnd", async () => {
-    await setTimestamp(VESTING_END.add(new BN(1)), clocks);
+    await ethers.provider.send("evm_setNextBlockTimestamp", [
+      VESTING_END.add(new BN(1)).toNumber(),
+    ]);
+    await ethers.provider.send("evm_mine");
+    // await setTimestamp(VESTING_END.add(new BN(1)), clocks);
     const advanceRec = await ETHUNIfp0.advance();
     await ETHUNIfp1.advance();
     await ETHDAIfp0.advance();
     await ETHDAIfp1.advance();
-    await setTimestamp(VESTING_END.add(VESTING_PERIOD).add(new BN(1)), clocks);
+    await ethers.provider.send("evm_setNextBlockTimestamp", [
+      VESTING_END.add(VESTING_PERIOD).add(new BN(1)).toNumber(),
+    ]);
+    await ethers.provider.send("evm_mine");
+    // await setTimestamp(VESTING_END.add(VESTING_PERIOD).add(new BN(1)), clocks);
     const distributorClaimFirstRec = await privateSaleDistributor.claim({
       from: investorA,
     });
+    console.log(
+      "liqA tarot balance: ",
+      (await tarot.balanceOf(liqA)).toString()
+    );
+    console.log(
+      "liqB tarot balance: ",
+      (await tarot.balanceOf(liqB)).toString()
+    );
+    console.log(
+      "liqC tarot balance: ",
+      (await tarot.balanceOf(liqC)).toString()
+    );
+    await liquidityGenerationParticipantsDistributor.claim({ from: liqA });
+    await liquidityGenerationParticipantsDistributor.claim({ from: liqB });
+    await liquidityGenerationParticipantsDistributor.claim({ from: liqC });
+    console.log(
+      "liqA tarot balance: ",
+      (await tarot.balanceOf(liqA)).toString()
+    );
+    console.log(
+      "liqB tarot balance: ",
+      (await tarot.balanceOf(liqB)).toString()
+    );
+    console.log(
+      "liqC tarot balance: ",
+      (await tarot.balanceOf(liqC)).toString()
+    );
+    await liquidityGenerationBonusDistributor.claim({ from: liqA });
+    await liquidityGenerationBonusDistributor.claim({ from: liqB });
+    await liquidityGenerationBonusDistributor.claim({ from: liqC });
+    console.log(
+      "liqA tarot balance: ",
+      (await tarot.balanceOf(liqA)).toString()
+    );
+    console.log(
+      "liqB tarot balance: ",
+      (await tarot.balanceOf(liqB)).toString()
+    );
+    console.log(
+      "liqC tarot balance: ",
+      (await tarot.balanceOf(liqC)).toString()
+    );
     await privateSaleDistributor.claim({ from: investorB });
     await privateSaleDistributor.claim({ from: investorC });
     await permissionlessDistributor.claim({ from: bob });
