@@ -9,7 +9,7 @@ import "@nomiclabs/hardhat-waffle";
 import "@nomiclabs/hardhat-etherscan";
 import "@nomiclabs/hardhat-truffle5";
 
-const compilerOverridePath = "test/Contracts/tarot-core/interfaces/";
+const compilerOverridePath = "tests/Contracts/tarot-core/interfaces/";
 const compilerOverrides: Record<string, SolcUserConfig> = {};
 
 fs.readdirSync(path.join(__dirname, compilerOverridePath)).forEach((file) => {
@@ -48,7 +48,7 @@ const config: HardhatUserConfig = {
     ],
     overrides: {
       ...compilerOverrides,
-      "test/Contracts/spooky/MasterChef.sol": {
+      "tests/Contracts/spooky/MasterChef.sol": {
         version: "0.8.0",
         settings: {
           optimizer: {
@@ -57,7 +57,7 @@ const config: HardhatUserConfig = {
           },
         },
       },
-      "test/Contracts/spooky/UniswapV2Factory.sol": {
+      "tests/Contracts/spooky/UniswapV2Factory.sol": {
         version: "0.6.12",
         settings: {
           optimizer: {
@@ -66,7 +66,7 @@ const config: HardhatUserConfig = {
           },
         },
       },
-      "test/Contracts/spooky/UniswapV2Router02.sol": {
+      "tests/Contracts/spooky/UniswapV2Router02.sol": {
         version: "0.6.12",
         settings: {
           optimizer: {
@@ -75,7 +75,7 @@ const config: HardhatUserConfig = {
           },
         },
       },
-      "test/Contracts/spooky/test/UniswapV2Router02Harness.sol": {
+      "tests/Contracts/spooky/test/UniswapV2Router02Harness.sol": {
         version: "0.6.12",
         settings: {
           optimizer: {
